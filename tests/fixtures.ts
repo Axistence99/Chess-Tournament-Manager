@@ -1,3 +1,4 @@
+/** Deterministic tournament fixtures shared by browser-level regression tests. */
 export const completedTournament = {
   tournament: {
     id: "qa-event",

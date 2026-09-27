@@ -1,3 +1,4 @@
+/** End-to-end validation of every browser-generated download format. */
 import { expect, test, type Download, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import JSZip from "jszip";

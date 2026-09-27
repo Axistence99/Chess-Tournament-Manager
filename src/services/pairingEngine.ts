@@ -1,3 +1,4 @@
+/** Pairing algorithms for Swiss, Round Robin, and Knockout tournaments. */
 import type { Pairing, Player, Round } from "../models";
 const uid = () => crypto.randomUUID();
 type Meta = {

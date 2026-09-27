@@ -1,3 +1,4 @@
+/** FIDE federation metadata and lookups for locally bundled country flags. */
 export interface Federation {
   code: string;
   iso2: string;
@@ -67,18 +68,19 @@ export const FEDERATIONS: Federation[] = [
   { code: "QAT", iso2: "QA", name: "Qatar" },
 ];
 
-export function flagForFederation(code: string): string {
-  const federation = FEDERATIONS.find(
-    (item) => item.code === code.toUpperCase(),
-  );
-  if (!federation?.iso2) return "♟";
-  return String.fromCodePoint(
-    ...[...federation.iso2].map((letter) => 127397 + letter.charCodeAt(0)),
+/** ISO code used by the local flag-icon assets. */
+export function iso2ForFederation(code: string): string {
+  const value = code.toUpperCase();
+  return (
+    FEDERATIONS.find((item) => item.code === value || item.iso2 === value)
+      ?.iso2 || ""
   );
 }
 
 export function federationName(code: string): string {
+  const value = code.toUpperCase();
   return (
-    FEDERATIONS.find((item) => item.code === code.toUpperCase())?.name || code
+    FEDERATIONS.find((item) => item.code === value || item.iso2 === value)
+      ?.name || code
   );
 }

@@ -1,3 +1,4 @@
+/** Unit tests for supported pairing formats and tournament edge cases. */
 import { describe, expect, it } from "vitest";
 import type { Player, Round } from "../models";
 import {

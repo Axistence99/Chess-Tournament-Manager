@@ -1,3 +1,4 @@
+/** Convert tournament rounds into standards-compatible PGN text. */
 import type { AppState, Pairing } from "../models";
 const res = (r: Pairing["result"]) =>
   r === "½-½"

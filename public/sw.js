@@ -1,5 +1,12 @@
-const CACHE = "castling-v36";
-const SHELL = ["./", "./index.html", "./logo.svg"];
+/** Offline service worker using network-first HTML and cache-first static assets. */
+const CACHE = "chest-tournament-v42";
+const SHELL = [
+  "./",
+  "./index.html",
+  "./chest-logo.webp",
+  "./favicon.png",
+  "./apple-touch-icon.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

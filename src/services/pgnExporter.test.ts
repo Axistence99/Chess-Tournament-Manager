@@ -1,3 +1,4 @@
+/** Unit tests for PGN metadata, colors, results, and move placeholders. */
 import { describe, expect, it } from "vitest";
 import type { AppState } from "../models";
 import { pgn } from "./pgnExporter";

@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+/** Smoke tests for first-run creation, persistence, and dashboard rendering. */
 import { beforeAll, describe, expect, it } from "vitest";
 
 const tournamentId = "test-tournament";

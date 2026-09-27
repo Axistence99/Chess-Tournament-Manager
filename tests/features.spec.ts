@@ -1,3 +1,4 @@
+/** End-to-end interaction coverage for themes, formats, restore, and projector UI. */
 import { expect, test } from "@playwright/test";
 import {
   completedTournament,
@@ -102,6 +103,30 @@ test("CSV import and JSON restore persist new local records", async ({
   expect(count).toBe(2);
 });
 
+test("round robin format renders a responsive crosstable", async ({ page }) => {
+  const roundRobin = structuredClone(completedTournament);
+  roundRobin.tournament.name = "Round Robin QA";
+  roundRobin.tournament.type = "Round Robin";
+  roundRobin.tournament.totalRounds = 3;
+  roundRobin.tournament.finished = false;
+  roundRobin.view = "dashboard";
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#restore-file").setInputFiles({
+    name: "round-robin.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(roundRobin)),
+  });
+
+  await page.locator('.nav [data-view="pairings"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Round Robin table" }),
+  ).toBeVisible();
+  await expect(page.locator(".round-robin-table tbody tr")).toHaveCount(4);
+  await expect(page.locator(".round-robin-table .rr-self")).toHaveCount(4);
+  await expect(page.locator(".round-robin-table .rr-result")).toHaveCount(4);
+  await expect(page.locator(".round-robin-scroll")).toBeVisible();
+});
+
 test("knockout format generates and advances a seeded bracket", async ({
   page,
 }) => {
@@ -139,6 +164,18 @@ test("knockout format generates and advances a seeded bracket", async ({
   for (let index = 0; index < 2; index++)
     await semifinalResults.nth(index).click();
 
+  await expect(
+    page.getByRole("heading", { name: "Semifinal bracket" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Continue to Round 2", exact: false })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Continue to Round 2?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Create Round 2", exact: false })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Final bracket" }),
   ).toBeVisible();

@@ -1,3 +1,4 @@
+/** End-to-end coverage for first-run setup and the full tournament lifecycle. */
 import { expect, test } from "@playwright/test";
 
 async function clearAndOpen(page: import("@playwright/test").Page) {
@@ -13,15 +14,15 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   page.on("pageerror", (error) => errors.push(error.message));
 
   await clearAndOpen(page);
-  await expect(page.locator(".hero h2")).toHaveText("New Tournament");
-  await expect(page.locator(".creation-page")).toHaveCount(0);
-  await page.locator('[data-action="edit-tournament"]').click();
-  await expect(page.locator("#tournament-form")).toBeVisible();
-  await page.fill('#tournament-form [name="name"]', "Browser QA Open");
-  await page.fill('#tournament-form [name="venue"]', "QA Hall");
-  await page.fill('#tournament-form [name="organizer"]', "QA Organizer");
-  await page.fill('#tournament-form [name="totalRounds"]', "1");
-  await page.click('#tournament-form button[type="submit"]');
+  await expect(page).toHaveTitle("Chest-Tournament Manager");
+  await expect(page.locator(".creation-page")).toBeVisible();
+  await expect(page.locator(".creation-identity img")).toBeVisible();
+  await expect(page.locator(".hero h2")).toHaveCount(0);
+  await page.fill('#creation-form [name="name"]', "Browser QA Open");
+  await page.fill('#creation-form [name="venue"]', "QA Hall");
+  await page.fill('#creation-form [name="organizer"]', "QA Organizer");
+  await page.fill('#creation-form [name="totalRounds"]', "1");
+  await page.click('#creation-form button[type="submit"]');
 
   await expect(page.getByText("Browser QA Open").first()).toBeVisible();
   await page.locator('.nav [data-view="players"]').click();
@@ -79,9 +80,8 @@ test("player profile persists in directory and tournament storage", async ({
   page,
 }) => {
   await clearAndOpen(page);
-  await page.locator('[data-action="edit-tournament"]').click();
-  await page.fill('#tournament-form [name="name"]', "Persistence Open");
-  await page.click('#tournament-form button[type="submit"]');
+  await page.fill('#creation-form [name="name"]', "Persistence Open");
+  await page.click('#creation-form button[type="submit"]');
   await page.locator('.nav [data-view="players"]').click();
   await page.locator('.section-head [data-action="add-player"]').click();
   await page.fill('#player-form [name="name"]', "Persistent Player");
