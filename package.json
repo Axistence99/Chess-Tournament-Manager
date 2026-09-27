@@ -1,0 +1,33 @@
+{
+  "name": "chess-pairing-manager",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "test": "vitest run src",
+    "test:e2e": "playwright test",
+    "check": "tsc && vitest run src",
+    "format": "prettier --write \"src/**/*.{ts,css}\" \"tests/**/*.ts\" \"public/**/*.js\" \"*.{ts,json,md,html}\" \".github/**/*.yml\"",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
+    "lucide": "^0.544.0",
+    "papaparse": "^5.5.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/papaparse": "^5.3.16",
+    "happy-dom": "^20.14.5",
+    "prettier": "^3.9.9",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "vitest": "^4.1.11"
+  }
+}
