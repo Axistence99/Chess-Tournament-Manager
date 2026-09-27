@@ -25,7 +25,11 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await page.click('#creation-form button[type="submit"]');
 
   await expect(page.getByText("Browser QA Open").first()).toBeVisible();
-  await page.locator('.nav [data-view="players"]').click();
+  await page.locator('.quick [data-action="go-players"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Player management" }),
+  ).toBeVisible();
+  await expect(page.locator("#player-form")).toHaveCount(0);
   for (const name of ["Papa", "XanjoFish", "Black Horse"]) {
     const row = page.locator("tbody tr", { hasText: name });
     await expect(row).toBeVisible();
