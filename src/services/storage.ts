@@ -1,3 +1,4 @@
+/** LocalStorage repository for reusable profiles and multiple tournaments. */
 import type { AppState, Player } from "../models";
 
 /**

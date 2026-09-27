@@ -1,3 +1,4 @@
+/** Browser-only PDF, image, and ZIP exporters for tournament reports. */
 import { jsPDF } from "jspdf";
 import { toPng, toJpeg } from "html-to-image";
 import JSZip from "jszip";
@@ -175,7 +176,7 @@ export function makePdf(
     d.setTextColor(...gold);
     d.setFontSize(8);
     d.text(
-      `Castling Tournament Manager  •  Page ${index} of ${pages}`,
+      `Chest-Tournament Manager  •  Page ${index} of ${pages}`,
       pageWidth / 2,
       pageHeight - 6,
       {
@@ -212,7 +213,7 @@ export async function makeImage(
       : await toJpeg(el, { ...opts, quality: 0.94 });
   if (save) {
     const a = document.createElement("a");
-    a.download = `castling-${Date.now()}.${type}`;
+    a.download = `chest-tournament-${Date.now()}.${type}`;
     a.href = data;
     a.click();
   }

@@ -1,3 +1,4 @@
+/** Player-domain helpers shared by forms, imports, and profile displays. */
 /**
  * Convert a player's numeric age into the standard age band used by the UI.
  * The upper age is exclusive in chess notation: a seven-year-old is U8,

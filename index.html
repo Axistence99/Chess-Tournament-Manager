@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- Static document shell; the TypeScript application renders into #app. -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,11 +8,12 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <meta name="theme-color" content="#0b1210" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta
       name="description"
       content="Offline-first professional chess tournament pairing manager"
     />
-    <link rel="icon" href="./logo.svg" />
     <script>
       (() => {
         const theme = localStorage.getItem("castling.theme.v1");
@@ -19,7 +21,7 @@
           document.documentElement.dataset.theme = theme;
       })();
     </script>
-    <title>Castling — Chess Pairing Manager</title>
+    <title>Chest-Tournament Manager</title>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>

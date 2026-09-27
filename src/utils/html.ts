@@ -1,3 +1,4 @@
+/** Safe HTML-template helpers and Lucide icon placeholders used by renderers. */
 /** Escape untrusted text before interpolating it into an HTML template. */
 export function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(

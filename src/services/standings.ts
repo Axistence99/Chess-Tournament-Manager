@@ -1,3 +1,4 @@
+/** Derive live rankings and tie-break values from players and round results. */
 import type { Player, PlayerStats, Round } from "../models";
 /**
  * Rebuild standings from immutable round results.

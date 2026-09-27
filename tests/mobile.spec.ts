@@ -1,3 +1,4 @@
+/** Mobile regression tests for equal navigation sizing and active states. */
 import { expect, test } from "@playwright/test";
 import { libraryWithCompletedTournament } from "./fixtures";
 

@@ -1,3 +1,4 @@
+# Build, validate, package, and deploy the static application to GitHub Pages.
 name: Deploy to GitHub Pages
 
 on:

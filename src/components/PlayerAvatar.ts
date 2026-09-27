@@ -1,3 +1,4 @@
+/** Render safe player avatars using a compressed photo or generated initials. */
 import type { Player } from "../models";
 import { escapeHtml, initials } from "../utils/html";
 

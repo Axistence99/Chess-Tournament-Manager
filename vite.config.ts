@@ -1,3 +1,4 @@
+/** Vite build configuration for relative GitHub Pages assets and Tailwind CSS. */
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({

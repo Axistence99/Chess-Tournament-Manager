@@ -1,3 +1,4 @@
+/** Shared domain types used by pairing, standings, storage, exports, and UI. */
 export type TournamentType =
   "Swiss System" | "Round Robin" | "Knockout" | "Team";
 export type GameResult =

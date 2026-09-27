@@ -1,3 +1,4 @@
+/** Playwright projects, local preview server, and browser test defaults. */
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({

@@ -1,3 +1,7 @@
+/**
+ * Browser application entry point: renders every screen, coordinates user
+ * interactions, and persists tournament changes through the service layer.
+ */
 import "./styles/main.css";
 import { createIcons, icons } from "lucide";
 import Papa from "papaparse";
@@ -13,7 +17,11 @@ import { standings } from "./services/standings";
 import { pgn } from "./services/pgnExporter";
 import { makeImage, makePdf, makeZip } from "./services/exporters";
 import { categoryForAge } from "./utils/player";
-import { FEDERATIONS, flagForFederation } from "./utils/federations";
+import {
+  FEDERATIONS,
+  federationName,
+  iso2ForFederation,
+} from "./utils/federations";
 import { escapeHtml as h, icon } from "./utils/html";
 import { playerAvatar as avatarMarkup } from "./components/PlayerAvatar";
 import { compressAvatar } from "./services/avatar";
@@ -100,20 +108,18 @@ try {
 const initialLibrary = storage.list();
 const obsoletePlaceholder =
   initialLibrary.length === 1 &&
-  initialLibrary[0].tournament.name === "My Chess Open" &&
-  initialLibrary[0].tournament.venue === "Tournament Hall" &&
+  ["My Chess Open", "New Tournament"].includes(
+    initialLibrary[0].tournament.name,
+  ) &&
+  ["Tournament Hall", "Venue not set"].includes(
+    initialLibrary[0].tournament.venue,
+  ) &&
   initialLibrary[0].players.length === 0 &&
   initialLibrary[0].rounds.length === 0;
 if (obsoletePlaceholder) storage.remove(initialLibrary[0].tournament.id);
 
 let hasTournament = storage.list().length > 0;
 let state = storage.load() || emptyState();
-if (!hasTournament) {
-  state.tournament.name = "New Tournament";
-  state.tournament.venue = "Venue not set";
-  storage.save(state);
-  hasTournament = true;
-}
 let draftingNewTournament = false;
 let modal = "";
 let selectedPlayer: string | null = null;
@@ -256,7 +262,7 @@ function shell(content: string) {
           `<button data-view="${v}" class="${active === v ? "active" : ""}" aria-current="${active === v ? "page" : "false"}">${icon(i, mobile ? 19 : 17)}<span>${l}</span></button>`,
       )
       .join("");
-  return `<div class="app"><aside class="sidebar"><div class="brand"><img src="./logo.svg" alt=""><div><strong>Castling</strong><small>Pairing Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar"><button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" aria-label="Mobile navigation">${navButtons(true)}</nav></div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
+  return `<div class="app"><aside class="sidebar"><div class="brand"><img src="./chest-logo.webp" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar"><button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" aria-label="Mobile navigation">${navButtons(true)}</nav></div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
 }
 function exportMenu() {
   return `<div class="export-menu"><button class="btn" data-action="restore">${icon("upload")}<span class="hide-mobile"> Restore</span></button><button class="btn primary" data-action="toggle-export">${icon("download")}<span class="export-label">Export</span>${icon("chevron-down", 14)}</button>${exportOpen ? `<div class="dropdown" role="menu"><button data-export="pgn">${icon("file-text")} PGN · Tournament</button><button data-export="pdf-standings">${icon("file-text")} PDF · Standings</button><button data-export="pdf-pairings">${icon("file-text")} PDF · Pairings</button><button data-export="pdf-players">${icon("file-text")} PDF · Player list</button><button data-export="png">${icon("image")} PNG · 1080×1350</button><button data-export="jpg">${icon("image")} JPG · 1920×1080</button><button data-export="zip">${icon("package")} ZIP tournament package</button></div>` : ""}</div>`;
@@ -270,6 +276,45 @@ function metrics() {
 // -----------------------------------------------------------------------------
 // Page renderers
 // -----------------------------------------------------------------------------
+
+/** First-run setup is a real tournament form, never a saved placeholder event. */
+function creationPage() {
+  const t = state.tournament;
+  return `<main class="creation-page" id="main">
+    <section class="creation-intro">
+      <div class="creation-identity"><img src="./chest-logo.webp" alt="Chest-Tournament Manager logo"><strong>Chest-Tournament Manager</strong></div>
+      <span class="eyebrow">Tournament setup</span>
+      <h1>Create your tournament</h1>
+      <p>Set the event details first. Your dashboard, player directory, pairings, standings, and exports become available after creation.</p>
+      <div class="creation-features" aria-label="Application features">
+        <span>${icon("users", 18)} Reusable player profiles</span>
+        <span>${icon("swords", 18)} Automatic pairings</span>
+        <span>${icon("trophy", 18)} Live standings</span>
+        <span>${icon("hard-drive", 18)} Saved locally</span>
+      </div>
+      <div class="toolbar creation-tools">
+        <button class="btn" data-action="restore">${icon("upload")} Import backup</button>
+        <button class="btn" data-action="app-settings">${icon("palette")} Theme</button>
+      </div>
+    </section>
+    <section class="creation-card" aria-labelledby="create-title">
+      <span class="eyebrow">New event</span>
+      <h2 id="create-title">Tournament details</h2>
+      <form id="creation-form">
+        <div class="form-grid">
+          <div class="field full-field"><label>Tournament name *</label><input name="name" required autofocus placeholder="e.g. City Chess Open" value="${h(t.name)}"></div>
+          <div class="field"><label>Venue</label><input name="venue" placeholder="Playing venue" value="${h(t.venue)}"></div>
+          <div class="field"><label>Organizer</label><input name="organizer" placeholder="Organizer or club" value="${h(t.organizer)}"></div>
+          <div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div>
+          <div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>
+          <div class="field"><label>Number of rounds</label><input name="totalRounds" type="number" min="1" max="30" value="${t.totalRounds}"><small>Calculated automatically for Knockout.</small></div>
+          <div class="field"><label>Tournament type</label><select name="type">${["Swiss System", "Round Robin", "Knockout", "Team"].map((type) => `<option ${t.type === type ? "selected" : ""}>${type}</option>`).join("")}</select></div>
+        </div>
+        <button class="btn primary creation-submit" type="submit">${icon("arrow-right")} Create tournament</button>
+      </form>
+    </section>
+  </main>${modalView()}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
+}
 
 function dashboard() {
   const leaders = standings(state.players, state.rounds).slice(0, 5);
@@ -315,7 +360,7 @@ function playersView() {
       ? `<div class="table-wrap"><table><thead><tr><th>Player</th><th>Rating</th><th>Age</th><th>Category</th><th>Club</th><th>Federation</th><th>Tournament</th><th></th></tr></thead><tbody>${list
           .map((profile) => {
             const registered = registeredIds.has(profile.id);
-            return `<tr><td><button class="icon-btn" data-player="${profile.id}" style="color:inherit">${avatarMarkup(profile)}<b>${h(profile.name)}</b></button></td><td class="mono">${profile.rating}</td><td>${profile.age || "—"}</td><td><span class="pill">${h(profile.ageCategory || categoryForAge(profile.age))}</span></td><td>${h(profile.club || "—")}</td><td>${profile.country ? `${countryFlag(profile.country)} ${h(federationCode(profile.country))}` : "—"}</td><td>${
+            return `<tr><td><button class="icon-btn" data-player="${profile.id}" style="color:inherit">${avatarMarkup(profile)}<b>${h(profile.name)}</b></button></td><td class="mono">${profile.rating}</td><td>${profile.age || "—"}</td><td><span class="pill">${h(profile.ageCategory || categoryForAge(profile.age))}</span></td><td>${h(profile.club || "—")}</td><td class="federation-cell">${profile.country ? countryFlag(profile.country) : "—"}</td><td>${
               registered
                 ? `<button class="btn registration registered" data-remove-from-tournament="${profile.id}">${icon("check", 14)} Registered</button>`
                 : `<button class="btn registration" data-add-to-tournament="${profile.id}">${icon("plus", 14)} Add to tournament</button>`
@@ -504,9 +549,72 @@ function knockoutBracketView(): string {
   return `<section class="bracket-panel" aria-label="Knockout bracket"><div class="bracket-panel-head"><div><span class="eyebrow">Tournament tree</span><h3>Bracket overview</h3></div><span class="pill">${state.players.filter((profile) => profile.active).length} players · ${totalRounds} rounds</span></div><div class="bracket-scroll"><div class="knockout-bracket ${compact ? "compact-bracket" : "mirrored-bracket"}" style="width:${width}px;height:${height}px"><svg class="bracket-connectors" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">${connectors.join("")}</svg>${columns.join("")}</div></div>${compact ? "" : '<p class="bracket-scroll-hint">Scroll horizontally to explore both sides of the bracket.</p>'}</section>`;
 }
 
+function roundRobinTableView() {
+  const participants = state.players
+    .filter((profile) => profile.active)
+    .sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name));
+  if (participants.length < 2) return "";
+
+  const stats = new Map(
+    standings(state.players, state.rounds).map((entry) => [
+      entry.player.id,
+      entry,
+    ]),
+  );
+  const games = state.rounds.flatMap((round) =>
+    round.pairings.map((game) => ({ round: round.number, game })),
+  );
+  const scoreFor = (id: string, game: Round["pairings"][number]) => {
+    if (!game.result) return "·";
+    const isWhite = game.whiteId === id;
+    if (game.result === "½-½") return "½";
+    if (game.result === "BYE") return "1";
+    const won =
+      (isWhite && ["1-0", "1F-0F"].includes(game.result)) ||
+      (!isWhite && ["0-1", "0F-1F"].includes(game.result));
+    const forfeit = game.result.includes("F");
+    return `${won ? "1" : "0"}${forfeit ? "F" : ""}`;
+  };
+
+  const rows = participants
+    .map((profile, rowIndex) => {
+      const entry = stats.get(profile.id);
+      const cells = participants
+        .map((opponent, columnIndex) => {
+          if (profile.id === opponent.id)
+            return '<td class="rr-self" aria-label="Same player">×</td>';
+          const meetings = games.filter(
+            ({ game }) =>
+              game.blackId &&
+              ((game.whiteId === profile.id && game.blackId === opponent.id) ||
+                (game.whiteId === opponent.id && game.blackId === profile.id)),
+          );
+          if (!meetings.length)
+            return `<td class="rr-unscheduled" aria-label="Not yet scheduled">—</td>`;
+          const latestRound = meetings.at(-1)!.round;
+          const current = latestRound === currentRound()?.number;
+          const color =
+            meetings.at(-1)!.game.whiteId === profile.id ? "white" : "black";
+          const label = meetings
+            .map(
+              ({ round, game }) =>
+                `Round ${round}: ${scoreFor(profile.id, game)} as ${game.whiteId === profile.id ? "White" : "Black"}`,
+            )
+            .join(" · ");
+          return `<td class="rr-result rr-${color} ${current ? "rr-current" : ""}" title="${h(label)}">${meetings.map(({ game }) => scoreFor(profile.id, game)).join("/")}</td>`;
+        })
+        .join("");
+      return `<tr><td class="rr-seed mono">${rowIndex + 1}</td><td class="rr-player"><span>${countryFlag(profile.country)}</span><button data-player="${profile.id}">${h(profile.name)}</button><small>${profile.rating}</small></td>${cells}<td class="rr-points">${(entry?.points || 0).toFixed(1)}</td><td class="rr-rank">${entry?.rank || "—"}</td></tr>`;
+    })
+    .join("");
+
+  return `<section class="round-robin-panel" aria-label="Round Robin crosstable"><div class="bracket-panel-head"><div><span class="eyebrow">All-play-all matrix</span><h3>Round Robin table</h3></div><span class="pill">${participants.length} players · ${state.rounds.length}/${state.tournament.totalRounds} rounds</span></div><div class="round-robin-scroll"><table class="round-robin-table"><thead><tr><th>No.</th><th>Player</th>${participants.map((_, index) => `<th aria-label="Player ${index + 1}">${index + 1}</th>`).join("")}<th>Pts.</th><th>Rk.</th></tr></thead><tbody>${rows}</tbody></table></div><div class="rr-legend"><span><i class="rr-white"></i> Played as White</span><span><i class="rr-black"></i> Played as Black</span><span><i class="rr-current"></i> Current round</span></div></section>`;
+}
+
 function pairingsView() {
   const r = currentRound();
   const knockout = state.tournament.type === "Knockout";
+  const roundRobin = state.tournament.type === "Round Robin";
   const title = r
     ? knockout
       ? `${knockoutRoundLabel(r.number)} bracket`
@@ -515,8 +623,12 @@ function pairingsView() {
       ? "Knockout bracket"
       : "Pairings";
   const resultHelp = knockout
-    ? "Results save instantly. Knockout games require a decisive result. Winners advance automatically."
-    : "Results save instantly. The next round is prepared automatically when every board is complete.";
+    ? "Results save instantly. Knockout games require a decisive result. Review every result before confirming the next stage."
+    : "Results save instantly. When every board is complete, review the results and confirm before creating the next round.";
+  const canAdvance =
+    Boolean(r && isComplete(r)) &&
+    state.rounds.length < state.tournament.totalRounds &&
+    !state.tournament.finished;
   const emptyState =
     state.tournament.type === "Team"
       ? empty(
@@ -533,7 +645,7 @@ function pairingsView() {
           "Manage players",
           "go-players",
         );
-  return `<div class="section-head"><div><span class="eyebrow">${knockout ? "Single elimination" : "Tournament room"}</span><h2>${title}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}${state.tournament.finished ? `<span class="pill final-status">${icon("trophy", 12)} Final</span>` : ""}</div></div>${r ? `${knockout ? knockoutBracketView() : ""}<div class="current-round-label"><span class="eyebrow">${knockout ? `${knockoutRoundLabel(r.number)} controls` : `Round ${r.number}`}</span><h3>${knockout ? "Enter decisive results" : "Enter results"}</h3></div><div class="card">${r.pairings.map((g) => board(g, r)).join("")}</div><p class="muted" style="font-size:12px;margin-top:12px">${resultHelp}</p>` : emptyState}`;
+  return `<div class="section-head"><div><span class="eyebrow">${knockout ? "Single elimination" : "Tournament room"}</span><h2>${title}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}${state.tournament.finished ? `<span class="pill final-status">${icon("trophy", 12)} Final</span>` : ""}</div></div>${r ? `${knockout ? knockoutBracketView() : roundRobin ? roundRobinTableView() : ""}<div class="current-round-label"><span class="eyebrow">${knockout ? `${knockoutRoundLabel(r.number)} controls` : `Round ${r.number}`}</span><h3>${knockout ? "Enter decisive results" : "Enter results"}</h3></div><div class="card">${r.pairings.map((g) => board(g, r)).join("")}</div>${canAdvance ? `<section class="round-complete-prompt" aria-live="polite"><div><span class="eyebrow">Results complete</span><h3>Review Round ${r.number} before continuing</h3><p>Pairings for Round ${r.number + 1} will only be created after your confirmation.</p></div><button class="btn primary" data-action="review-next-round">${icon("arrow-right")} Continue to Round ${r.number + 1}</button></section>` : ""}<p class="muted" style="font-size:12px;margin-top:12px">${resultHelp}</p>` : emptyState}`;
 }
 
 function board(g: Round["pairings"][number], r: Round) {
@@ -571,14 +683,11 @@ function federationCode(country: string): string {
 
 function countryFlag(country: string): string {
   const federation = federationCode(country);
-  const knownFlag = flagForFederation(federation);
-  if (knownFlag !== "♟") return knownFlag;
-  const code = country.length === 2 ? country.toUpperCase() : "";
-  return /^[A-Z]{2}$/.test(code)
-    ? String.fromCodePoint(
-        ...[...code].map((letter) => 127397 + letter.charCodeAt(0)),
-      )
-    : "♟";
+  const iso2 = iso2ForFederation(federation);
+  const name = federationName(federation);
+  return iso2
+    ? `<img class="federation-flag" src="${import.meta.env.BASE_URL}flags/${iso2.toLowerCase()}.svg" alt="${h(name)} flag" title="${h(name)}" loading="lazy">`
+    : `<span class="federation-flag federation-neutral" role="img" aria-label="${h(name || "Neutral federation")}">♟</span>`;
 }
 
 function rankingHeading(): string {
@@ -599,12 +708,12 @@ function standingsTable(
     includeReportHeading
       ? `<header class="ranking-heading"><span class="eyebrow">Official tournament report</span><h3>${h(rankingHeading())}</h3><p>${h(details)}</p></header>`
       : ""
-  }<div class="table-wrap"><table class="ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th aria-label="Flag"></th><th>Name</th><th>FED</th><th>Rtg</th><th>Club/City</th><th>Pts.</th><th title="Buchholz">TB1</th><th title="Buchholz Cut 1">TB2</th><th title="Sonneborn-Berger">TB3</th></tr></thead><tbody>${rows
+  }<div class="table-wrap"><table class="ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th>Name</th><th>Federation</th><th>Rtg</th><th>Club/City</th><th>Pts.</th><th title="Buchholz">TB1</th><th title="Buchholz Cut 1">TB2</th><th title="Sonneborn-Berger">TB3</th></tr></thead><tbody>${rows
     .map((entry) => {
       const startNumber =
         state.players.findIndex((profile) => profile.id === entry.player.id) +
         1;
-      return `<tr class="medal-${entry.rank}"><td class="rank">${entry.rank}</td><td class="mono">${startNumber}</td><td class="flag-cell" aria-label="${h(entry.player.country || "No federation")}">${countryFlag(entry.player.country)}</td><td><button class="ranking-name" data-player="${entry.player.id}">${h(entry.player.name)}</button></td><td class="mono">${h(federationCode(entry.player.country))}</td><td class="mono">${entry.player.rating || 0}</td><td>${h(entry.player.club || "—")}</td><td class="score">${entry.points.toFixed(1)}</td><td>${entry.buchholz.toFixed(1)}</td><td>${entry.buchholzCut.toFixed(1)}</td><td>${entry.sonneborn.toFixed(1)}</td></tr>`;
+      return `<tr class="medal-${entry.rank}"><td class="rank">${entry.rank}</td><td class="mono">${startNumber}</td><td><button class="ranking-name" data-player="${entry.player.id}">${h(entry.player.name)}</button></td><td class="flag-cell">${countryFlag(entry.player.country)}</td><td class="mono">${entry.player.rating || 0}</td><td>${h(entry.player.club || "—")}</td><td class="score">${entry.points.toFixed(1)}</td><td>${entry.buchholz.toFixed(1)}</td><td>${entry.buchholzCut.toFixed(1)}</td><td>${entry.sonneborn.toFixed(1)}</td></tr>`;
     })
     .join("")}</tbody></table></div></section>`;
 }
@@ -629,7 +738,7 @@ function historyView() {
 }
 function poster() {
   const rows = standings(state.players, state.rounds).slice(0, 12);
-  return `<div class="poster" id="poster"><span class="eyebrow">Official live standings</span><h1>${h(state.tournament.name)}</h1><p style="font-size:25px;color:#9eb7ac">${h(state.tournament.venue)} · ${h(state.tournament.date)} · ${h(state.tournament.type)} · ${h(state.tournament.timeControl)} · Round ${state.rounds.length}</p>${standingsTable(rows)}<p style="position:absolute;bottom:60px">Generated with Castling Tournament Manager</p></div>`;
+  return `<div class="poster" id="poster"><span class="eyebrow">Official live standings</span><h1>${h(state.tournament.name)}</h1><p style="font-size:25px;color:#9eb7ac">${h(state.tournament.venue)} · ${h(state.tournament.date)} · ${h(state.tournament.type)} · ${h(state.tournament.timeControl)} · Round ${state.rounds.length}</p>${standingsTable(rows)}<p style="position:absolute;bottom:60px">Generated with Chest-Tournament Manager</p></div>`;
 }
 // -----------------------------------------------------------------------------
 // Dialog and sheet renderers
@@ -642,6 +751,7 @@ function modalView() {
   if (modal === "tournament") return tournamentForm();
   if (modal === "new") return confirmNew();
   if (modal === "finish") return finishTournamentModal();
+  if (modal === "advance-round") return advanceRoundModal();
   if (modal === "tournaments") return tournamentChooser();
   if (modal === "appearance") return appearanceSettings();
   return "";
@@ -702,7 +812,7 @@ function playerForm() {
           <div class="field"><label>Age *</label><input id="player-age" name="age" type="number" inputmode="numeric" min="1" max="120" required value="${age}"></div>
           <div class="field"><label>Age category</label><output id="age-category" class="derived-field" aria-live="polite">${h(category)}</output><small>Calculated automatically from age</small></div>
           <div class="field"><label>Club <span class="optional">Optional</span></label><input name="club" value="${h(p?.club || "")}"></div>
-          <div class="field"><label>Federation <span class="optional">Optional</span></label><select name="country"><option value="">No federation</option>${FEDERATIONS.map((federation) => `<option value="${federation.code}" ${federation.code === federationCode(p?.country || "") ? "selected" : ""}>${flagForFederation(federation.code)} ${federation.code} · ${federation.name}</option>`).join("")}</select></div>
+          <div class="field"><label>Federation <span class="optional">Optional</span></label><div class="federation-picker"><span id="federation-selected-flag" class="selected-federation-flag">${p?.country ? countryFlag(p.country) : icon("flag", 18)}</span><select id="player-federation" name="country"><option value="">No federation</option>${FEDERATIONS.map((federation) => `<option value="${federation.code}" ${federation.code === federationCode(p?.country || "") ? "selected" : ""}>${federation.name}</option>`).join("")}</select></div></div>
           <div class="field"><label>FIDE ID <span class="optional">Optional</span></label><input name="fideId" inputmode="numeric" value="${h(p?.fideId || "")}"></div>
         </div>
         ${!p ? `<label class="registration-option"><input type="checkbox" name="registerCurrent" checked><span><b>Add to ${h(state.tournament.name)}</b><small>The profile is saved globally and registered for this tournament.</small></span></label>` : ""}
@@ -720,6 +830,12 @@ function tournamentForm() {
 }
 function confirmNew() {
   return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><h2>Create another tournament?</h2><p class="muted">Your current tournament remains safely stored in this browser. You can switch between events at any time.</p><div class="toolbar"><button class="btn primary" data-action="confirm-new">Create tournament</button><button class="btn" data-action="close-modal">Cancel</button></div></section></div>`;
+}
+
+function advanceRoundModal() {
+  const round = currentRound();
+  if (!round || !isComplete(round)) return "";
+  return `<div class="modal-backdrop"><section class="modal advance-round-modal" role="dialog" aria-modal="true" aria-labelledby="advance-round-title" data-modal><div class="modal-head"><div><span class="eyebrow">Confirm completed results</span><h2 id="advance-round-title">Continue to Round ${round.number + 1}?</h2></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><p class="muted">Review the results for every board before continuing. Confirming will create the next round using the current standings and tie-break data.</p><div class="round-confirm-summary"><span><b>${round.pairings.length}</b> boards</span><span><b>${round.pairings.filter((game) => game.result !== null).length}</b> results entered</span></div><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button class="btn" data-action="close-modal">Review results</button><button class="btn primary" data-action="confirm-next-round">${icon("arrow-right")} Create Round ${round.number + 1}</button></div></section></div>`;
 }
 
 function finishTournamentModal() {
@@ -754,7 +870,7 @@ function profileModal(id: string) {
       .filter((g) => g.whiteId === id || g.blackId === id)
       .map((g) => ({ r: r.number, g })),
   );
-  return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><div style="display:flex;gap:14px">${avatarMarkup(p, true)}<div><h2 style="margin-bottom:2px">${h(p.name)}</h2><span class="muted">${p.rating} · Age ${p.age || "—"} · ${h(p.ageCategory || categoryForAge(p.age))} · ${h(p.club || p.country || "Independent")}</span></div></div><button class="icon-btn" data-action="close-modal">${icon("x")}</button></div><div class="metrics" style="grid-template-columns:repeat(4,1fr)"><div class="metric"><b>${s?.points.toFixed(1) || "0.0"}</b><span>Points</span></div><div class="metric"><b>${s?.wins || 0}</b><span>Wins</span></div><div class="metric"><b>${s?.draws || 0}</b><span>Draws</span></div><div class="metric"><b>${s?.losses || 0}</b><span>Losses</span></div></div><div class="timeline player-results">${
+  return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><div style="display:flex;gap:14px">${avatarMarkup(p, true)}<div><h2 style="margin-bottom:2px">${h(p.name)}</h2><span class="muted">${p.rating} · Age ${p.age || "—"} · ${h(p.ageCategory || categoryForAge(p.age))} · ${p.club ? h(p.club) : p.country ? countryFlag(p.country) : "Independent"}</span></div></div><button class="icon-btn" data-action="close-modal">${icon("x")}</button></div><div class="metrics" style="grid-template-columns:repeat(4,1fr)"><div class="metric"><b>${s?.points.toFixed(1) || "0.0"}</b><span>Points</span></div><div class="metric"><b>${s?.wins || 0}</b><span>Wins</span></div><div class="metric"><b>${s?.draws || 0}</b><span>Draws</span></div><div class="metric"><b>${s?.losses || 0}</b><span>Losses</span></div></div><div class="timeline player-results">${
     games.length
       ? games
           .map(({ r, g }) => {
@@ -828,6 +944,11 @@ function enhanceRenderedUi(): void {
 }
 
 function render() {
+  if (!hasTournament) {
+    app.innerHTML = creationPage();
+    enhanceRenderedUi();
+    return;
+  }
   let content = dashboard();
   if (state.view === "players") content = playersView();
   if (state.view === "pairings") content = pairingsView();
@@ -849,7 +970,7 @@ function generatePairings(rounds: Round[]): Round["pairings"] {
   return generateSwiss(state.players, rounds);
 }
 
-function prepareAutomaticRound(): boolean {
+function prepareAutomaticRound(allowAdvance = false): boolean {
   if (state.tournament.finished || state.tournament.type === "Team")
     return false;
   const active = state.players.filter((player) => player.active);
@@ -867,6 +988,10 @@ function prepareAutomaticRound(): boolean {
     changed = true;
   }
   if (last && !isComplete(last)) return changed;
+  // Completed rounds remain open for review. Advancing requires an explicit
+  // organizer confirmation so an accidental final result cannot create the
+  // next round immediately.
+  if (last && !allowAdvance) return changed;
   if (
     state.tournament.type === "Knockout" &&
     last?.pairings.some((game) => game.result === "½-½")
@@ -1148,7 +1273,6 @@ app.addEventListener("click", (e) => {
       optimisticUpdate(() => {
         g.result = result;
         r.completed = isComplete(r);
-        if (r.completed) prepareAutomaticRound();
       });
     }
     return;
@@ -1181,6 +1305,19 @@ app.addEventListener("click", (e) => {
     state.view = "players";
     modal = "player";
     render();
+  } else if (a === "review-next-round") {
+    const round = currentRound();
+    if (!round || !isComplete(round)) return;
+    modal = "advance-round";
+    render();
+  } else if (a === "confirm-next-round") {
+    const nextNumber = state.rounds.length + 1;
+    if (prepareAutomaticRound(true)) {
+      modal = "";
+      selectedRound = null;
+      save(`Round ${nextNumber} created`);
+      render();
+    }
   } else if (a === "edit-tournament") {
     if (tournamentStarted()) {
       toast("Tournament settings are locked after Round 1 starts.", "info");
@@ -1304,7 +1441,8 @@ app.addEventListener("submit", (e) => {
   e.preventDefault();
   const f = e.target as HTMLFormElement;
   if (f.id === "player-form") submitPlayer(f);
-  if (f.id === "tournament-form") submitTournament(f);
+  if (f.id === "tournament-form" || f.id === "creation-form")
+    submitTournament(f);
 });
 
 // Native validation remains the source of truth, while the toast explains why
@@ -1341,6 +1479,13 @@ app.addEventListener("input", (e) => {
 });
 app.addEventListener("change", (e) => {
   const t = e.target as HTMLInputElement;
+  if (t.id === "player-federation") {
+    const preview = document.querySelector<HTMLElement>(
+      "#federation-selected-flag",
+    );
+    if (preview)
+      preview.innerHTML = t.value ? countryFlag(t.value) : icon("flag", 18);
+  }
   if (t.id === "player-avatar" && t.files?.[0]) {
     const file = t.files[0];
     void compressAvatar(file)
@@ -1462,7 +1607,7 @@ window.addEventListener("castling:saved", () => {
 });
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=36").then((registration) => {
+    navigator.serviceWorker.register("./sw.js?v=42").then((registration) => {
       void registration.update();
     });
   });

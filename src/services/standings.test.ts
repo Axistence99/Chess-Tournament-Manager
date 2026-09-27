@@ -1,3 +1,4 @@
+/** Unit tests for points, ranking order, and tie-break calculations. */
 import { describe, expect, it } from "vitest";
 import type { Player, Round } from "../models";
 import { standings } from "./standings";

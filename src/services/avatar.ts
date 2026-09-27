@@ -1,3 +1,4 @@
+/** Image-processing utilities for local, portable player profile pictures. */
 /**
  * Convert an uploaded photo into a small square JPEG suitable for localStorage.
  * Center-cropping and compression keep each profile portable in JSON backups

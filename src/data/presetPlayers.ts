@@ -1,3 +1,4 @@
+/** Starter profiles seeded into the reusable player directory on first use. */
 import type { Player } from "../models";
 import { categoryForAge } from "../utils/player";
 
