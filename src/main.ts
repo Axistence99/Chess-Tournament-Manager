@@ -346,25 +346,25 @@ function playersView() {
 
   return `<div class="section-head">
     <div><span class="eyebrow">Player directory</span><h2>Player management</h2><p class="muted">Create reusable profiles, then register them for ${h(state.tournament.name)}.</p></div>
-    <div class="toolbar">
+    <div class="toolbar player-toolbar">
       <input class="search" id="player-search" value="${h(search)}" placeholder="Search player profiles…" aria-label="Search player profiles">
       <button class="btn" data-action="sort">${icon("arrow-up-down")} ${sort === "rating" ? "Rating" : "Name"}</button>
       <button class="btn" data-action="import-csv">${icon("upload")} CSV</button>
       <button class="btn" data-action="export-csv">${icon("download")} CSV</button>
-      <button type="button" class="btn primary" data-action="add-player">${icon("user-plus")} New profile</button>
+      <button type="button" class="btn primary new-profile-button" data-action="add-player">${icon("user-plus")} New profile</button>
     </div>
   </div>
   <div class="roster-summary"><span><b>${state.players.filter((profile) => profile.active).length}</b> registered for this tournament</span><span><b>${list.length}</b> profiles in your directory</span></div>
   ${
     list.length
-      ? `<div class="table-wrap"><table><thead><tr><th>Player</th><th>Rating</th><th>Age</th><th>Category</th><th>Club</th><th>Federation</th><th>Tournament</th><th></th></tr></thead><tbody>${list
+      ? `<div class="table-wrap players-table-wrap"><table class="players-table"><thead><tr><th>Player</th><th>Rating</th><th>Age</th><th>Category</th><th>Club</th><th>Federation</th><th>Tournament</th><th></th></tr></thead><tbody>${list
           .map((profile) => {
             const registered = registeredIds.has(profile.id);
-            return `<tr><td><button class="icon-btn" data-player="${profile.id}" style="color:inherit">${avatarMarkup(profile)}<b>${h(profile.name)}</b></button></td><td class="mono">${profile.rating}</td><td>${profile.age || "—"}</td><td><span class="pill">${h(profile.ageCategory || categoryForAge(profile.age))}</span></td><td>${h(profile.club || "—")}</td><td class="federation-cell">${profile.country ? countryFlag(profile.country) : "—"}</td><td>${
+            return `<tr><td class="player-primary"><button class="icon-btn" data-player="${profile.id}" style="color:inherit">${avatarMarkup(profile)}<b>${h(profile.name)}</b></button></td><td class="player-detail mono" data-label="Rating">${profile.rating}</td><td class="player-detail" data-label="Age">${profile.age || "—"}</td><td class="player-detail" data-label="Category"><span class="pill">${h(profile.ageCategory || categoryForAge(profile.age))}</span></td><td class="player-detail player-club" data-label="Club">${h(profile.club || "—")}</td><td class="player-detail federation-cell" data-label="Federation">${profile.country ? countryFlag(profile.country) : "—"}</td><td class="player-registration">${
               registered
                 ? `<button class="btn registration registered" data-remove-from-tournament="${profile.id}">${icon("check", 14)} Registered</button>`
                 : `<button class="btn registration" data-add-to-tournament="${profile.id}">${icon("plus", 14)} Add to tournament</button>`
-            }</td><td><button class="icon-btn" data-edit-player="${profile.id}" aria-label="Edit ${h(profile.name)}">${icon("pencil")}</button><button class="icon-btn" data-delete-player="${profile.id}" aria-label="Delete ${h(profile.name)}">${icon("trash-2")}</button></td></tr>`;
+            }</td><td class="player-actions"><button class="icon-btn" data-edit-player="${profile.id}" aria-label="Edit ${h(profile.name)}">${icon("pencil")}</button><button class="icon-btn" data-delete-player="${profile.id}" aria-label="Delete ${h(profile.name)}">${icon("trash-2")}</button></td></tr>`;
           })
           .join("")}</tbody></table></div>`
       : empty(
@@ -1607,7 +1607,7 @@ window.addEventListener("castling:saved", () => {
 });
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=42").then((registration) => {
+    navigator.serviceWorker.register("./sw.js?v=43").then((registration) => {
       void registration.update();
     });
   });

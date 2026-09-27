@@ -470,6 +470,13 @@ select:focus-visible {
   border-color: #32664f;
   background: #173628;
 }
+.player-actions {
+  white-space: nowrap;
+}
+.player-actions .icon-btn {
+  min-width: 36px;
+  min-height: 36px;
+}
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);
@@ -1660,6 +1667,108 @@ body.modal-open {
     flex: 1 1 220px;
     width: min(100%, 360px);
   }
+  /* Player management becomes a touch-friendly card list instead of a wide
+     desktop table, keeping registration and profile actions in the viewport. */
+  .player-toolbar .search {
+    order: -2;
+    flex-basis: 100%;
+    width: 100%;
+    max-width: none;
+  }
+  .player-toolbar .new-profile-button {
+    order: -1;
+    flex-basis: 100%;
+  }
+  .players-table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+  .players-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .players-table thead {
+    display: none;
+  }
+  .players-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .players-table tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    padding: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--panel);
+    box-shadow: 0 10px 26px #0000001f;
+  }
+  .players-table td {
+    min-width: 0;
+    padding: 10px;
+    border: 0;
+  }
+  .players-table .player-primary {
+    grid-column: 1 / -1;
+    padding: 2px 88px 13px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .players-table .player-primary .icon-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+  .players-table .player-primary b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .players-table .player-detail {
+    display: grid;
+    align-content: center;
+    gap: 4px;
+    min-height: 55px;
+  }
+  .players-table .player-detail::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .players-table .player-club {
+    grid-column: 1 / -1;
+  }
+  .players-table .federation-cell {
+    align-items: start;
+    text-align: left;
+  }
+  .players-table .player-registration {
+    grid-column: 1 / -1;
+    padding: 8px 2px 2px;
+  }
+  .players-table .registration {
+    width: 100%;
+    min-height: 44px;
+  }
+  .players-table .player-actions {
+    position: absolute;
+    top: 11px;
+    right: 10px;
+    display: flex;
+    gap: 2px;
+    padding: 0;
+  }
+  .players-table .player-actions .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
   .mobile-nav {
     position: fixed;
     left: 0;
@@ -1761,11 +1870,13 @@ body.modal-open {
     min-width: 0;
     grid-column: 2/4;
     order: 4;
-    overflow-x: auto;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+    overflow: visible;
   }
-  .result-buttons::-webkit-scrollbar {
-    display: none;
+  .result-buttons button {
+    min-width: 0;
+    padding-inline: 5px;
   }
   .form-grid {
     grid-template-columns: 1fr;
@@ -1793,6 +1904,19 @@ body.modal-open {
   .modal .toolbar .btn {
     flex: 1 1 130px;
     white-space: normal;
+  }
+  .section-head > .player-toolbar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .player-toolbar .search,
+  .player-toolbar .new-profile-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .player-toolbar .btn {
+    min-width: 0;
+    padding-inline: 7px;
   }
   .topbar .toolbar .btn {
     flex: 0 0 40px;

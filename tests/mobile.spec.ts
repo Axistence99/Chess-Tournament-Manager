@@ -4,6 +4,19 @@ import { libraryWithCompletedTournament } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((library) => {
+    // Keep one reusable profile outside the tournament to exercise the mobile
+    // registration action without relying on seeded browser data.
+    library.players["mobile-spare"] = {
+      id: "mobile-spare",
+      name: "Mobile Reserve Player",
+      rating: 1450,
+      age: 20,
+      club: "Touch Club",
+      country: "PHI",
+      fideId: "5",
+      ageCategory: "Open",
+      active: true,
+    };
     localStorage.setItem("castling.library.v2", JSON.stringify(library));
     localStorage.setItem("castling.player-presets.v1", "tested");
   }, libraryWithCompletedTournament());
@@ -32,6 +45,46 @@ async function expectStableNavigation(page: import("@playwright/test").Page) {
   );
   expect(overflow).toBeLessThanOrEqual(1);
 }
+
+test("player registration uses cards without horizontal scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.locator('.mobile-nav [data-view="players"]').click();
+
+  await expect(page.locator(".players-table tbody tr")).toHaveCount(5);
+  const reserve = page
+    .locator(".players-table tbody tr")
+    .filter({ hasText: "Mobile Reserve Player" });
+  await expect(reserve).toBeVisible();
+  const registration = reserve.getByRole("button", {
+    name: "Add to tournament",
+  });
+  await expect(registration).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const button = document
+      .querySelector<HTMLElement>("[data-add-to-tournament]")!
+      .getBoundingClientRect();
+    const list = document
+      .querySelector<HTMLElement>(".players-table-wrap")!
+      .getBoundingClientRect();
+    return {
+      pageOverflow:
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+      buttonLeft: button.left,
+      buttonRight: button.right,
+      listLeft: list.left,
+      listRight: list.right,
+      viewport: window.innerWidth,
+    };
+  });
+  expect(layout.pageOverflow).toBeLessThanOrEqual(1);
+  expect(layout.buttonLeft).toBeGreaterThanOrEqual(layout.listLeft);
+  expect(layout.buttonRight).toBeLessThanOrEqual(layout.listRight);
+  expect(layout.listRight).toBeLessThanOrEqual(layout.viewport);
+});
 
 test("bottom navigation remains equal-sized and highlights Pairings and Rounds", async ({
   page,
