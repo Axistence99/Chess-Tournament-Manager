@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
 
 async function expectStableNavigation(page: import("@playwright/test").Page) {
   const buttons = page.locator(".mobile-nav button");
-  await expect(buttons).toHaveCount(5);
+  await expect(buttons).toHaveCount(6);
   const boxes = await buttons.evaluateAll((items) =>
     items.map((item) => {
       const box = item.getBoundingClientRect();
@@ -89,7 +89,7 @@ test("player registration uses cards without horizontal scrolling", async ({
   expect(layout.listRight).toBeLessThanOrEqual(layout.viewport);
 });
 
-test("round robin and standings use mobile cards without horizontal scrolling", async ({
+test("round robin uses compact tables and standings stay within the viewport", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 720 });
@@ -107,8 +107,9 @@ test("round robin and standings use mobile cards without horizontal scrolling", 
 
   await page.locator('.mobile-nav [data-view="pairings"]').click();
   await expect(page.locator(".round-robin-scroll")).toBeHidden();
-  await expect(page.locator(".rr-mobile-list")).toBeVisible();
-  await expect(page.locator(".rr-mobile-card")).toHaveCount(4);
+  await expect(page.locator(".rr-mobile-tables")).toBeVisible();
+  await expect(page.locator(".rr-mobile-standings tbody tr")).toHaveCount(4);
+  await expect(page.locator(".rr-mobile-schedule tbody tr")).toHaveCount(2);
   await expectStableNavigation(page);
 
   await page.locator('.mobile-nav [data-view="standings"]').click();
@@ -120,7 +121,30 @@ test("round robin and standings use mobile cards without horizontal scrolling", 
   await expectStableNavigation(page);
 });
 
-test("bottom navigation remains equal-sized and highlights Pairings and Rounds", async ({
+test("all primary tabs remain inside the mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  for (const view of [
+    "dashboard",
+    "players",
+    "pairings",
+    "standings",
+    "history",
+    "help",
+  ]) {
+    await page.locator(`.mobile-nav [data-view="${view}"]`).click();
+    const overflow = await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    );
+    expect(
+      overflow,
+      `${view} should not overflow horizontally`,
+    ).toBeLessThanOrEqual(1);
+  }
+});
+
+test("bottom navigation remains equal-sized and highlights Pairings, Rounds, and Help", async ({
   page,
 }) => {
   await page.locator('.mobile-nav [data-view="pairings"]').click();
@@ -133,5 +157,15 @@ test("bottom navigation remains equal-sized and highlights Pairings and Rounds",
   await expect(
     page.locator('.mobile-nav [data-view="history"]'),
   ).toHaveAttribute("aria-current", "page");
+  await expectStableNavigation(page);
+
+  await page.locator('.mobile-nav [data-view="help"]').click();
+  await expect(page.locator('.mobile-nav [data-view="help"]')).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Help & tournament guide" }),
+  ).toBeVisible();
   await expectStableNavigation(page);
 });
