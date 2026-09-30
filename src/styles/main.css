@@ -729,13 +729,19 @@ select:focus-visible {
   font-weight: 800;
 }
 .mobile-rank-card.medal-1 {
-  border-color: color-mix(in srgb, var(--gold) 70%, var(--line));
+  border-color: #846b35;
+  background: linear-gradient(135deg, #2a2417, var(--panel) 62%);
+  box-shadow: inset 4px 0 #9f7f39;
 }
 .mobile-rank-card.medal-2 {
-  border-color: #84908c;
+  border-color: #65716d;
+  background: linear-gradient(135deg, #202825, var(--panel) 62%);
+  box-shadow: inset 4px 0 #7f8c88;
 }
 .mobile-rank-card.medal-3 {
-  border-color: #9f6848;
+  border-color: #714c38;
+  background: linear-gradient(135deg, #2a211c, var(--panel) 62%);
+  box-shadow: inset 4px 0 #936142;
 }
 .table-wrap {
   overflow: auto;
@@ -874,7 +880,7 @@ tbody tr:hover {
 }
 .ranking-name {
   padding: 0;
-  color: #0754b8;
+  color: #8bcfac;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -893,34 +899,34 @@ tbody tr:hover {
   font-size: 19px;
 }
 .ranking-table .score {
-  color: #1a4d38;
+  color: #9ad7b7;
 }
 .rank {
   font-weight: 800;
 }
 .ranking-table tbody tr.medal-1 {
-  background: linear-gradient(90deg, #6e54224d, #1a211a 52%, #111a17);
-  box-shadow: inset 4px 0 #e4ba55;
+  background: linear-gradient(90deg, #5d481f29, #172019 48%, #111a17);
+  box-shadow: inset 4px 0 #9f7f39;
 }
 .ranking-table tbody tr.medal-2 {
-  background: linear-gradient(90deg, #8f9d9a33, #17201d 52%, #111a17);
-  box-shadow: inset 4px 0 #bfc9c7;
+  background: linear-gradient(90deg, #73807c22, #151e1b 48%, #111a17);
+  box-shadow: inset 4px 0 #7f8c88;
 }
 .ranking-table tbody tr.medal-3 {
-  background: linear-gradient(90deg, #8a4f2f3d, #211b17 52%, #111a17);
-  box-shadow: inset 4px 0 #c78354;
+  background: linear-gradient(90deg, #74442b29, #1c1916 48%, #111a17);
+  box-shadow: inset 4px 0 #936142;
 }
 .medal-1 .rank {
-  color: #f1c75f;
-  text-shadow: 0 0 12px #d9ad5855;
+  color: #c7a34f;
+  text-shadow: none;
 }
 .medal-2 .rank {
-  color: #d6dfdd;
-  text-shadow: 0 0 10px #c5d0cd38;
+  color: #aebbb7;
+  text-shadow: none;
 }
 .medal-3 .rank {
-  color: #d79465;
-  text-shadow: 0 0 10px #b66f433d;
+  color: #bd7d56;
+  text-shadow: none;
 }
 .pill {
   display: inline-flex;
@@ -1434,8 +1440,44 @@ body.modal-open {
   overflow: auto;
 }
 .projector h1 {
-  font-size: clamp(34px, 6vw, 88px);
   margin: 0;
+  padding-right: 130px;
+  font-size: clamp(34px, 6vw, 88px);
+}
+.projector-stage {
+  margin-top: 3vh;
+  padding-bottom: 76px;
+}
+.projector-controls {
+  position: fixed;
+  z-index: 3;
+  right: 50%;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px;
+  border: 1px solid #527061;
+  border-radius: 14px;
+  background: #0b1712e8;
+  box-shadow: 0 12px 36px #0008;
+  transform: translateX(50%);
+  backdrop-filter: blur(10px);
+}
+.projector-controls span {
+  min-width: 42px;
+  color: #b9cabf;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+.projector .bracket-panel,
+.projector .round-robin-panel {
+  margin-top: 0;
+}
+.projector .bracket-scroll,
+.projector .round-robin-scroll {
+  max-height: calc(100vh - 250px);
 }
 .projector .close-projector {
   position: fixed;
@@ -1700,8 +1742,8 @@ body.modal-open {
   bottom: 0;
   left: 0;
   padding: 7px;
-  color: #332306;
-  background: linear-gradient(90deg, #ba8a2d, #f1ce72, #ba8a2d);
+  color: #171309;
+  background: linear-gradient(90deg, #725622, #ae8d43, #725622);
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -1713,22 +1755,21 @@ body.modal-open {
   order: 2;
   min-height: 286px !important;
   padding-bottom: 41px !important;
-  color: #f4cd65;
-  border-color: #c49a43 !important;
+  color: #d5af55;
+  border-color: #8d7138 !important;
   background:
-    radial-gradient(circle at 50% 0, #f1ca6550, transparent 56%),
-    linear-gradient(155deg, #4a3715, #171a13 72%) !important;
+    radial-gradient(circle at 50% 0, #b9913d2b, transparent 56%),
+    linear-gradient(155deg, #332916, #131712 72%) !important;
   box-shadow:
-    inset 0 3px #f0ca67,
-    0 22px 54px #0007,
-    0 0 42px #c58f2224 !important;
+    inset 0 3px #a9863d,
+    0 20px 46px #0006 !important;
 }
 .podium-1 .podium-emblem {
   width: 88px;
   height: 88px;
   border-width: 2px;
-  background: radial-gradient(circle, #f1cf7140, transparent 67%), #ffffff08;
-  box-shadow: 0 0 34px #efc75a24;
+  background: radial-gradient(circle, #b6924428, transparent 67%), #ffffff06;
+  box-shadow: 0 0 24px #b7913c18;
 }
 .podium-1 .podium-emblem svg {
   width: 47px;
@@ -1750,27 +1791,27 @@ body.modal-open {
   grid-column: 1;
   grid-row: 1;
   order: 1;
-  color: #dce8e5;
-  border-color: #81918d !important;
+  color: #b9c8c4;
+  border-color: #66746f !important;
   background:
-    radial-gradient(circle at 50% 0, #dce8e52c, transparent 55%),
-    linear-gradient(155deg, #33413d, #131a17 72%) !important;
+    radial-gradient(circle at 50% 0, #aebdb91a, transparent 55%),
+    linear-gradient(155deg, #26312e, #111714 72%) !important;
   box-shadow:
-    inset 0 3px #cdd8d5,
-    0 18px 42px #0005 !important;
+    inset 0 3px #81908b,
+    0 16px 36px #0004 !important;
 }
 .podium-3 {
   grid-column: 3;
   grid-row: 1;
   order: 3;
-  color: #e69a69;
-  border-color: #9b6240 !important;
+  color: #c17e57;
+  border-color: #795039 !important;
   background:
-    radial-gradient(circle at 50% 0, #dc87533b, transparent 55%),
-    linear-gradient(155deg, #482d20, #191613 72%) !important;
+    radial-gradient(circle at 50% 0, #ad684326, transparent 55%),
+    linear-gradient(155deg, #35251e, #171513 72%) !important;
   box-shadow:
-    inset 0 3px #d58a59,
-    0 18px 42px #0005 !important;
+    inset 0 3px #9d6747,
+    0 16px 36px #0004 !important;
 }
 .finish-modal {
   text-align: center;
@@ -3015,16 +3056,41 @@ body.modal-open {
   border-color: #d8e2dd;
 }
 :root[data-theme="light"] .ranking-table tbody tr.medal-1 {
-  background: linear-gradient(90deg, #f3dda7, #fff 65%);
+  background: linear-gradient(90deg, #ecd08a, #fff8e5 72%);
+  box-shadow: inset 5px 0 #b78825;
 }
 :root[data-theme="light"] .ranking-table tbody tr.medal-2 {
-  background: linear-gradient(90deg, #e4e9e8, #fff 65%);
+  background: linear-gradient(90deg, #cdd8d4, #f7faf8 72%);
+  box-shadow: inset 5px 0 #7e918a;
 }
 :root[data-theme="light"] .ranking-table tbody tr.medal-3 {
-  background: linear-gradient(90deg, #efd4c1, #fff 65%);
+  background: linear-gradient(90deg, #e2ae8c, #fff3ec 72%);
+  box-shadow: inset 5px 0 #ae6943;
+}
+:root[data-theme="light"] .mobile-rank-card.medal-1 {
+  border-color: #b78825;
+  background: linear-gradient(135deg, #f3dda5, #fffaf0 68%);
+  box-shadow:
+    inset 4px 0 #b78825,
+    0 10px 24px #6e511527;
+}
+:root[data-theme="light"] .mobile-rank-card.medal-2 {
+  border-color: #7e918a;
+  background: linear-gradient(135deg, #dce4e1, #ffffff 68%);
+  box-shadow:
+    inset 4px 0 #7e918a,
+    0 10px 24px #38504520;
+}
+:root[data-theme="light"] .mobile-rank-card.medal-3 {
+  border-color: #ae6943;
+  background: linear-gradient(135deg, #edc5ac, #fff8f3 68%);
+  box-shadow:
+    inset 4px 0 #ae6943,
+    0 10px 24px #6a3e2820;
 }
 :root[data-theme="light"] .ranking-name,
-:root[data-theme="light"] .ranking-name:hover {
+:root[data-theme="light"] .ranking-name:hover,
+:root[data-theme="light"] .ranking-table .score {
   color: #176a49;
 }
 :root[data-theme="light"] .result-buttons {
@@ -3266,16 +3332,41 @@ body.modal-open {
   border-color: #c0c0a5;
 }
 :root[data-theme="criterion"] .ranking-table tbody tr.medal-1 {
-  background: linear-gradient(90deg, #e9d59d, #edf0d7 65%);
+  background: linear-gradient(90deg, #d6b958, #f0ebc9 72%);
+  box-shadow: inset 5px 0 #715515;
 }
 :root[data-theme="criterion"] .ranking-table tbody tr.medal-2 {
-  background: linear-gradient(90deg, #d7ddda, #edf0d7 65%);
+  background: linear-gradient(90deg, #b9c6bd, #e9ecd1 72%);
+  box-shadow: inset 5px 0 #607369;
 }
 :root[data-theme="criterion"] .ranking-table tbody tr.medal-3 {
-  background: linear-gradient(90deg, #dfc0a9, #edf0d7 65%);
+  background: linear-gradient(90deg, #c88f69, #eee0c7 72%);
+  box-shadow: inset 5px 0 #874a2c;
+}
+:root[data-theme="criterion"] .mobile-rank-card.medal-1 {
+  border: 2px solid #715515;
+  background: linear-gradient(135deg, #d9bf6a, #f2edcf 70%);
+  box-shadow:
+    inset 4px 0 #715515,
+    6px 7px 0 #183d2c35;
+}
+:root[data-theme="criterion"] .mobile-rank-card.medal-2 {
+  border: 2px solid #607369;
+  background: linear-gradient(135deg, #bec9c1, #ecefd4 70%);
+  box-shadow:
+    inset 4px 0 #607369,
+    6px 7px 0 #183d2c35;
+}
+:root[data-theme="criterion"] .mobile-rank-card.medal-3 {
+  border: 2px solid #874a2c;
+  background: linear-gradient(135deg, #cf9b76, #efe1c9 70%);
+  box-shadow:
+    inset 4px 0 #874a2c,
+    6px 7px 0 #183d2c35;
 }
 :root[data-theme="criterion"] .ranking-name,
-:root[data-theme="criterion"] .ranking-name:hover {
+:root[data-theme="criterion"] .ranking-name:hover,
+:root[data-theme="criterion"] .ranking-table .score {
   color: #1d503b;
 }
 :root[data-theme="criterion"] .result-buttons {
@@ -3759,11 +3850,11 @@ body.modal-open {
   color: #173629;
   border-color: #c9ac65;
   background:
-    radial-gradient(circle at 50% -12%, #f1d99c80, transparent 40%),
-    radial-gradient(circle at 8% 100%, #b9ddca70, transparent 38%),
-    linear-gradient(145deg, #fafffc, #e8f2ed 72%);
+    radial-gradient(circle at 50% -12%, #e7c66f70, transparent 40%),
+    radial-gradient(circle at 8% 100%, #91c9aa75, transparent 38%),
+    linear-gradient(145deg, #ffffff, #dcece4 72%);
   box-shadow:
-    0 24px 60px #254b381c,
+    0 24px 60px #254b3830,
     inset 0 1px #ffffff;
 }
 :root[data-theme="light"] .final-banner::before {
@@ -3805,34 +3896,34 @@ body.modal-open {
 }
 :root[data-theme="light"] .podium-1 {
   color: #956b16;
-  border-color: #c99a38 !important;
+  border: 2px solid #b98722 !important;
   background:
-    radial-gradient(circle at 50% 0, #ffe59c, transparent 58%),
-    linear-gradient(155deg, #fff8df, #ead7a4 78%) !important;
+    radial-gradient(circle at 50% 0, #ffe69b, transparent 56%),
+    linear-gradient(155deg, #fff5cf, #e6c66b 82%) !important;
   box-shadow:
-    inset 0 3px #d7a93f,
-    0 22px 48px #89671c24,
-    0 0 38px #e5b94a20 !important;
+    inset 0 4px #c9992d,
+    0 24px 48px #71531135,
+    0 0 0 4px #dfbb5a24 !important;
 }
 :root[data-theme="light"] .podium-2 {
   color: #667570;
-  border-color: #aab8b3 !important;
+  border: 2px solid #879a93 !important;
   background:
-    radial-gradient(circle at 50% 0, #ffffff, transparent 58%),
-    linear-gradient(155deg, #f8fbfa, #dce5e1 78%) !important;
+    radial-gradient(circle at 50% 0, #ffffff, transparent 54%),
+    linear-gradient(155deg, #f5f8f7, #c8d5d0 82%) !important;
   box-shadow:
-    inset 0 3px #b8c5c1,
-    0 16px 34px #455c5220 !important;
+    inset 0 4px #9baaa5,
+    0 18px 36px #334a4030 !important;
 }
 :root[data-theme="light"] .podium-3 {
   color: #a75f39;
-  border-color: #c88a67 !important;
+  border: 2px solid #b76f48 !important;
   background:
-    radial-gradient(circle at 50% 0, #fff2e9, transparent 58%),
-    linear-gradient(155deg, #fff6ef, #ecc9b4 78%) !important;
+    radial-gradient(circle at 50% 0, #fff0e5, transparent 54%),
+    linear-gradient(155deg, #fae6d8, #dda47f 82%) !important;
   box-shadow:
-    inset 0 3px #cb835d,
-    0 16px 34px #75452c20 !important;
+    inset 0 4px #bd754f,
+    0 18px 36px #6b3c2430 !important;
 }
 :root[data-theme="light"] .champion-ribbon {
   color: #fffdf2;
@@ -3886,33 +3977,33 @@ body.modal-open {
 }
 :root[data-theme="criterion"] .podium-1 {
   color: #8a651b;
-  border-color: #b69238 !important;
+  border: 2px solid #765918 !important;
   background:
-    radial-gradient(circle at 50% 0, #efd37890, transparent 58%),
-    linear-gradient(155deg, #f5edc8, #d6c381 80%) !important;
+    radial-gradient(circle at 50% 0, #f4dc83a8, transparent 54%),
+    linear-gradient(155deg, #f2e5aa, #c9a94b 82%) !important;
   box-shadow:
-    inset 0 3px #b58e32,
-    7px 9px 0 #153a292e !important;
+    inset 0 4px #8c6a1d,
+    9px 11px 0 #102f2252 !important;
 }
 :root[data-theme="criterion"] .podium-2 {
   color: #62736a;
-  border-color: #98a49c !important;
+  border: 2px solid #66766b !important;
   background:
-    radial-gradient(circle at 50% 0, #fffde7, transparent 58%),
-    linear-gradient(155deg, #f4f2d7, #d2d8c0 80%) !important;
+    radial-gradient(circle at 50% 0, #fffce0, transparent 54%),
+    linear-gradient(155deg, #edecc9, #b9c5aa 82%) !important;
   box-shadow:
-    inset 0 3px #9aa69f,
-    7px 9px 0 #153a2926 !important;
+    inset 0 4px #77867c,
+    9px 11px 0 #102f2245 !important;
 }
 :root[data-theme="criterion"] .podium-3 {
   color: #9c5734;
-  border-color: #b8754f !important;
+  border: 2px solid #8d4f30 !important;
   background:
-    radial-gradient(circle at 50% 0, #f7e1ca, transparent 58%),
-    linear-gradient(155deg, #f3e8cb, #d5ad88 80%) !important;
+    radial-gradient(circle at 50% 0, #f4d9bd, transparent 54%),
+    linear-gradient(155deg, #ecd8b6, #c78c66 82%) !important;
   box-shadow:
-    inset 0 3px #b66f48,
-    7px 9px 0 #153a2926 !important;
+    inset 0 4px #995a37,
+    9px 11px 0 #102f2245 !important;
 }
 :root[data-theme="criterion"] .champion-ribbon {
   color: #f8f1d0;

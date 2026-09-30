@@ -172,6 +172,20 @@ test("round robin rounds are derived from the player count", async ({
   await expect(page.locator("#round-count-output")).toHaveText(
     "1 round for 2 players",
   );
+
+  // Merely viewing the automatically generated opener must not freeze the
+  // schedule. Adding a third player rebuilds the untouched Round Robin draw.
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.locator('.nav [data-view="pairings"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Round 1 pairings" }),
+  ).toBeVisible();
+  await page.locator('.nav [data-view="players"]').click();
+  await page.locator(".registration:not(.registered)").first().click();
+  await page.locator('.nav [data-view="dashboard"]').click();
+  await expect(
+    page.locator(".metric", { hasText: "Current round" }),
+  ).toContainText("1 / 3");
 });
 
 test("round robin format renders a responsive crosstable", async ({ page }) => {
@@ -196,6 +210,14 @@ test("round robin format renders a responsive crosstable", async ({ page }) => {
   await expect(page.locator(".round-robin-table .rr-self")).toHaveCount(4);
   await expect(page.locator(".round-robin-table .rr-result")).toHaveCount(4);
   await expect(page.locator(".round-robin-scroll")).toBeVisible();
+
+  await page.locator('.sidebar [data-action="projector"]').click();
+  await page.getByRole("button", { name: "Next projector slide" }).click();
+  await expect(
+    page.locator(".projector h1", { hasText: "Round Robin Table" }),
+  ).toBeVisible();
+  await expect(page.locator(".projector .round-robin-table")).toBeVisible();
+  await page.keyboard.press("Escape");
 });
 
 test("team tournament groups boards and applies the selected team scoring", async ({
@@ -318,6 +340,14 @@ test("knockout format generates and advances a seeded bracket", async ({
   await expect(page.locator(".bracket-connectors path")).toHaveCount(1);
   await expect(page.locator(".championship-round")).toContainText("Winner 1.1");
   await expect(page.locator('.board-card [data-result="½-½"]')).toHaveCount(0);
+
+  await page.locator('.sidebar [data-action="projector"]').click();
+  await page.getByRole("button", { name: "Next projector slide" }).click();
+  await expect(
+    page.locator(".projector h1", { hasText: "Elimination Bracket" }),
+  ).toBeVisible();
+  await expect(page.locator(".projector .knockout-bracket")).toBeVisible();
+  await page.keyboard.press("Escape");
 
   const semifinalResults = page.locator('.board-card [data-result="1-0"]');
   await expect(semifinalResults).toHaveCount(2);
