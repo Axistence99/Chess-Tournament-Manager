@@ -5,8 +5,10 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 ## Features
 
 - Multi-tournament library: create, choose, resume, import, and delete independent events
-- Swiss pairing by score group, with repeat-opponent avoidance, color balancing, and fair bye assignment
-- Round-robin pairing via the circle method with a responsive all-play-all crosstable
+- Swiss pairing by score group, with roster-based round recommendations, no-repeat schedule caps, repeat-opponent avoidance, color balancing, and fair bye assignment
+- Round-robin pairing via the circle method, automatic rounds from field size, no self-pairings, and a responsive all-play-all crosstable
+- Team Swiss and Team Round Robin events with exact-size rosters, team registration, grouped boards, automatic all-play-all schedules, and repeat-aware Swiss team pairing
+- Selectable team scoring at creation: 2–1–0 match points, 3–1–0 match points, or board points only
 - Adaptive visual knockout trees: compact one-sided brackets for small fields and mirrored brackets for larger events
 - Automatic first-round creation, instant result entry, and organizer confirmation before each subsequent round
 - Live standings with Buchholz, Buchholz Cut 1, Sonneborn–Berger, wins, and color counts
@@ -18,7 +20,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Service worker for offline use after the first successful load
 - Relative asset paths and GitHub Pages deployment workflow
 
-> Team is visible as a planned tournament type, but team pairing generation is intentionally disabled.
+Team members are selected from the reusable player directory. A player can belong to only one team in an event, and each roster must contain exactly the configured number of players before it can compete.
 
 ## Architecture
 
@@ -33,6 +35,7 @@ src/
 │   ├── pairingEngine.ts
 │   ├── pgnExporter.ts
 │   ├── standings.ts
+│   ├── teamTournament.ts
 │   └── storage.ts
 ├── styles/              # Responsive application theme
 ├── utils/               # Pure formatting and federation helpers
@@ -61,7 +64,7 @@ npm run test:e2e    # Chromium desktop/mobile workflows and file exports
 npm audit           # Dependency vulnerability scan
 ```
 
-The browser suite exercises tournament creation, reusable players, pairing, results, finalization, persistence, round history, projector mode, backup restore, CSV, mobile navigation, and every export format.
+The browser suite exercises tournament creation, reusable players, individual and team pairing, team roster registration, configurable team scoring, results, finalization, persistence, round history, projector mode, backup restore, CSV, mobile navigation, and every export format.
 
 ## Production build
 
@@ -102,7 +105,7 @@ Tournament and reusable player data are stored under `castling.library.v2` in lo
 
 ## Pairing notes
 
-The Swiss engine sorts players by score and rating, assigns a bye to the lowest eligible player who has not already received one, and minimizes a cost function for score difference, prior opponents, and color imbalance. It is suitable for club and scholastic events. High-stakes FIDE-rated events should still be verified by a licensed arbiter against current federation rules.
+The Swiss engine sorts players by score and rating, assigns a bye to the lowest eligible player who has not already received one, and minimizes a cost function for score difference, prior opponents, and color imbalance. Team Swiss applies the same standings-first principle to teams, avoids repeat team opponents where possible, groups individual boards into team matches, and derives team standings from the selected scoring system. Team Round Robin uses the circle method and gives every team one bye when the field is odd. These formats are suitable for club and scholastic events. High-stakes FIDE-rated events should still be verified by a licensed arbiter against current federation rules.
 
 ## Privacy
 

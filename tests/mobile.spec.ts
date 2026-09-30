@@ -1,6 +1,9 @@
 /** Mobile regression tests for equal navigation sizing and active states. */
 import { expect, test } from "@playwright/test";
-import { libraryWithCompletedTournament } from "./fixtures";
+import {
+  completedTournament,
+  libraryWithCompletedTournament,
+} from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((library) => {
@@ -84,6 +87,34 @@ test("player registration uses cards without horizontal scrolling", async ({
   expect(layout.buttonLeft).toBeGreaterThanOrEqual(layout.listLeft);
   expect(layout.buttonRight).toBeLessThanOrEqual(layout.listRight);
   expect(layout.listRight).toBeLessThanOrEqual(layout.viewport);
+});
+
+test("round robin and standings use mobile cards without horizontal scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  const roundRobin = structuredClone(completedTournament);
+  roundRobin.tournament.name = "Mobile Round Robin";
+  roundRobin.tournament.type = "Round Robin";
+  roundRobin.tournament.totalRounds = 3;
+  roundRobin.tournament.finished = false;
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#restore-file").setInputFiles({
+    name: "mobile-round-robin.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(roundRobin)),
+  });
+
+  await page.locator('.mobile-nav [data-view="pairings"]').click();
+  await expect(page.locator(".round-robin-scroll")).toBeHidden();
+  await expect(page.locator(".rr-mobile-list")).toBeVisible();
+  await expect(page.locator(".rr-mobile-card")).toHaveCount(4);
+  await expectStableNavigation(page);
+
+  await page.locator('.mobile-nav [data-view="standings"]').click();
+  await expect(page.locator(".content .mobile-ranking-list")).toBeVisible();
+  await expect(page.locator(".content .mobile-rank-card")).toHaveCount(4);
+  await expectStableNavigation(page);
 });
 
 test("bottom navigation remains equal-sized and highlights Pairings and Rounds", async ({
