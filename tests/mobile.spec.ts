@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
       active: true,
     };
     localStorage.setItem("castling.library.v2", JSON.stringify(library));
-    localStorage.setItem("castling.player-presets.v1", "tested");
+    localStorage.setItem("castling.player-presets.v2", "tested");
   }, libraryWithCompletedTournament());
   await page.goto("/");
 });
@@ -89,7 +89,7 @@ test("player registration uses cards without horizontal scrolling", async ({
   expect(layout.listRight).toBeLessThanOrEqual(layout.viewport);
 });
 
-test("round robin uses compact tables and standings stay within the viewport", async ({
+test("round robin keeps the original matrix in a mobile scroll frame", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 720 });
@@ -106,10 +106,16 @@ test("round robin uses compact tables and standings stay within the viewport", a
   });
 
   await page.locator('.mobile-nav [data-view="pairings"]').click();
-  await expect(page.locator(".round-robin-scroll")).toBeHidden();
-  await expect(page.locator(".rr-mobile-tables")).toBeVisible();
-  await expect(page.locator(".rr-mobile-standings tbody tr")).toHaveCount(4);
-  await expect(page.locator(".rr-mobile-schedule tbody tr")).toHaveCount(2);
+  await expect(page.locator(".round-robin-scroll")).toBeVisible();
+  await expect(page.locator(".round-robin-table tbody tr")).toHaveCount(4);
+  await expect(page.locator(".rr-mobile-scroll-hint")).toBeVisible();
+  const matrix = await page
+    .locator(".round-robin-scroll")
+    .evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+  expect(matrix.scrollWidth).toBeGreaterThan(matrix.clientWidth);
   await expectStableNavigation(page);
 
   await page.locator('.mobile-nav [data-view="standings"]').click();
@@ -118,6 +124,36 @@ test("round robin uses compact tables and standings stay within the viewport", a
   await expect(page.locator(".content .mobile-rank-card .avatar")).toHaveCount(
     0,
   );
+  await expectStableNavigation(page);
+});
+
+test("hidden navigation restore control stays clear of mobile content and navigation", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "castling.layout.v1",
+      JSON.stringify({ hideSidebar: true, hideTopbar: true }),
+    ),
+  );
+  await page.reload();
+
+  await expect(
+    page.getByRole("button", { name: "Show left navigation" }),
+  ).toBeHidden();
+  const restore = page.getByRole("button", { name: "Show top bar" });
+  await expect(restore).toBeVisible();
+  const restoreBox = await restore.boundingBox();
+  const mobileNavBox = await page.locator(".mobile-nav").boundingBox();
+  expect(restoreBox!.x + restoreBox!.width).toBeLessThanOrEqual(320);
+  expect(restoreBox!.y + restoreBox!.height).toBeLessThanOrEqual(
+    mobileNavBox!.y,
+  );
+
+  await restore.click();
+  await expect(page.locator(".topbar")).toBeVisible();
+  await expect(page.locator(".layout-reveal-controls")).toBeHidden();
   await expectStableNavigation(page);
 });
 

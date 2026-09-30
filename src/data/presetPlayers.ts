@@ -9,17 +9,6 @@ import { categoryForAge } from "../utils/player";
  */
 export const PRESET_PLAYERS: Player[] = [
   {
-    id: "preset-papa",
-    name: "Papa",
-    age: 40,
-    rating: 0,
-    country: "PHI",
-    club: "",
-    fideId: "",
-    ageCategory: categoryForAge(40),
-    active: true,
-  },
-  {
     id: "preset-xanjofish",
     name: "XanjoFish",
     age: 11,
@@ -41,4 +30,40 @@ export const PRESET_PLAYERS: Player[] = [
     ageCategory: categoryForAge(19),
     active: true,
   },
+  {
+    id: "preset-joe",
+    name: "Joe",
+    age: 19,
+    rating: 1600,
+    country: "",
+    club: "",
+    fideId: "",
+    ageCategory: categoryForAge(19),
+    active: true,
+  },
+  {
+    id: "preset-johnny",
+    name: "Johnny",
+    age: 32,
+    rating: 1590,
+    country: "",
+    club: "",
+    fideId: "",
+    ageCategory: categoryForAge(32),
+    active: true,
+  },
+  {
+    id: "preset-hana",
+    name: "Hana",
+    age: 18,
+    rating: 1642,
+    country: "",
+    club: "",
+    fideId: "",
+    ageCategory: categoryForAge(18),
+    active: true,
+  },
 ];
+
+/** Profiles retired from the starter directory; referenced tournament data is preserved. */
+export const RETIRED_PRESET_PLAYER_IDS = ["preset-papa"];

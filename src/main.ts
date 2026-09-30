@@ -35,7 +35,10 @@ import {
 import { escapeHtml as h, icon } from "./utils/html";
 import { playerAvatar as avatarMarkup } from "./components/PlayerAvatar";
 import { compressAvatar } from "./services/avatar";
-import { PRESET_PLAYERS } from "./data/presetPlayers";
+import {
+  PRESET_PLAYERS,
+  RETIRED_PRESET_PLAYER_IDS,
+} from "./data/presetPlayers";
 import {
   generateTeamRound,
   teamRoundCount,
@@ -69,10 +72,10 @@ const emptyState = (): AppState => ({
   rounds: [],
   view: "dashboard",
 });
-const PRESET_SEED_KEY = "castling.player-presets.v1";
+const PRESET_SEED_KEY = "castling.player-presets.v2";
 const THEME_KEY = "castling.theme.v1";
 const LAYOUT_KEY = "castling.layout.v1";
-type AppTheme = "dark" | "light" | "criterion";
+type AppTheme = "dark" | "light" | "criterion" | "ggcc";
 type LayoutPreferences = { hideSidebar: boolean; hideTopbar: boolean };
 
 function loadLayoutPreferences(): LayoutPreferences {
@@ -95,7 +98,7 @@ function saveLayoutPreferences(): void {
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(layoutPreferences));
 }
 
-const THEMES: AppTheme[] = ["dark", "light", "criterion"];
+const THEMES: AppTheme[] = ["dark", "light", "criterion", "ggcc"];
 let activeTheme: AppTheme = THEMES.includes(
   localStorage.getItem(THEME_KEY) as AppTheme,
 )
@@ -116,7 +119,9 @@ function applyTheme(theme: AppTheme): void {
         ? "#f3f6f4"
         : theme === "criterion"
           ? "#1c503a"
-          : "#0b1210",
+          : theme === "ggcc"
+            ? "#080b10"
+            : "#0b1210",
     );
   localStorage.setItem(THEME_KEY, theme);
 }
@@ -126,6 +131,9 @@ applyTheme(activeTheme);
 /** Add starter profiles once, while respecting profiles an organizer already has. */
 function seedPresetPlayers(): void {
   if (localStorage.getItem(PRESET_SEED_KEY)) return;
+  // Retired presets are removed only when no saved tournament references them,
+  // so upgrading never destroys historical rosters or results.
+  for (const id of RETIRED_PRESET_PLAYER_IDS) storage.removePlayer(id);
   const existingNames = new Set(
     storage.listPlayers().map((profile) => profile.name.trim().toLowerCase()),
   );
@@ -415,15 +423,17 @@ function helpView(): string {
     ["help-results", "Results"],
     ["help-tiebreaks", "Standings & tie-breaks"],
     ["help-teams", "Team tournaments"],
+    ["help-shortcuts", "Keyboard shortcuts"],
     ["help-tools", "Tools & data"],
   ];
   return `<section class="help-page"><header class="help-hero"><div><span class="eyebrow">Organizer handbook</span><h2>Help & tournament guide</h2><p>Learn the complete workflow, how each pairing system works, and how rankings are calculated.</p></div><span class="help-hero-mark" aria-hidden="true">${icon("book-open", 38)}</span></header><div class="help-layout"><nav class="help-toc" aria-label="Help topics"><strong>On this page</strong>${topics.map(([id, label]) => `<a href="#${id}">${label}</a>`).join("")}</nav><div class="help-content">
   <section id="help-start" class="help-section"><div class="help-section-title"><span>${icon("rocket", 20)}</span><div><span class="eyebrow">First steps</span><h3>Getting started</h3></div></div><ol class="help-steps"><li><b>Create a tournament</b><span>Enter its name, format, date, venue, time control, and format-specific settings.</span></li><li><b>Register players</b><span>After creation, Player Management opens automatically. Add saved profiles or create new ones.</span></li><li><b>Review the field</b><span>Player and team registration remains editable until pairing history or recorded results lock the roster.</span></li><li><b>Open Pairings</b><span>The first round is created automatically when at least two eligible entrants are registered.</span></li><li><b>Enter every result</b><span>Review the completed round, then explicitly confirm before the next round is created.</span></li><li><b>Publish the final ranking</b><span>After the scheduled final round, end the tournament to display the official results.</span></li></ol></section>
   <section id="help-formats" class="help-section"><div class="help-section-title"><span>${icon("layout-grid", 20)}</span><div><span class="eyebrow">Competition systems</span><h3>Tournament formats</h3></div></div><div class="help-card-grid"><article class="help-card"><span class="help-card-icon">${icon("git-merge", 20)}</span><h4>Swiss System</h4><p>Players with similar scores are paired while repeat opponents and color imbalance are minimized. The recommended rounds are <b>ceil(log₂ entrants)</b>; the organizer may adjust this up to the no-repeat maximum.</p></article><article class="help-card"><span class="help-card-icon">${icon("table-2", 20)}</span><h4>Round Robin</h4><p>Every player meets every other player exactly once. Even fields play <b>n − 1</b> rounds; odd fields play <b>n</b> rounds with one bye per player. The round count is automatic.</p></article><article class="help-card"><span class="help-card-icon">${icon("network", 20)}</span><h4>Knockout / Elimination</h4><p>A rating-seeded single-elimination bracket. Top seeds are distributed across opposite sections, high seeds receive byes when needed, and only decisive winners advance.</p></article><article class="help-card"><span class="help-card-icon">${icon("shield", 20)}</span><h4>Team formats</h4><p>Team Swiss and Team Round Robin group individual boards into team matches. Exact rosters are selected before registration, and board results feed the team table.</p></article></div></section>
   <section id="help-pairings" class="help-section"><div class="help-section-title"><span>${icon("swords", 20)}</span><div><span class="eyebrow">How opponents are chosen</span><h3>Pairings & rounds</h3></div></div><div class="help-definition-list"><div><b>Swiss ordering</b><p>Entrants are ordered by current points, then rating. The pairing engine prefers close scores, strongly avoids repeat opponents, and balances White and Black assignments.</p></div><div><b>Swiss bye</b><p>When the field is odd, the lowest eligible player who has not already received a bye is selected where possible. A bye scores one point.</p></div><div><b>Round Robin rotation</b><p>A fixed circle rotation generates every unique opponent combination. Colors alternate through the schedule; self-pairings are impossible.</p></div><div><b>Knockout seeding</b><p>The bracket expands to the next power of two. Players are seeded by rating, with names resolving equal ratings. Draws are unavailable because each match needs a winner.</p></div><div><b>Organizer confirmation</b><p>Completing all results does not immediately advance the event. Use the continue action to review and confirm creation of the next round.</p></div><div><b>Roster changes</b><p>An untouched Round Robin opener is rebuilt when the roster changes. Once results are recorded, registration locks to protect the schedule and standings.</p></div></div></section>
-  <section id="help-results" class="help-section"><div class="help-section-title"><span>${icon("check-circle-2", 20)}</span><div><span class="eyebrow">Scoring games</span><h3>Results & notation</h3></div></div><div class="help-score-grid"><div><b>1–0</b><span>White wins</span></div><div><b>½–½</b><span>Draw</span></div><div><b>0–1</b><span>Black wins</span></div><div><b>1F–0F</b><span>White wins by forfeit</span></div><div><b>0F–1F</b><span>Black wins by forfeit</span></div><div><b>BYE</b><span>One-point unpaired round</span></div></div><p class="help-note">Individual scoring awards 1 point for a win or bye, ½ point for a draw, and 0 for a loss. Select a different result to correct an entry before advancing. Every completed round remains available in the Rounds tab.</p></section>
+  <section id="help-results" class="help-section"><div class="help-section-title"><span>${icon("check-circle-2", 20)}</span><div><span class="eyebrow">Scoring games</span><h3>Results & notation</h3></div></div><div class="help-score-grid"><div><b>1–0</b><span>White wins</span></div><div><b>½–½</b><span>Draw</span></div><div><b>0–1</b><span>Black wins</span></div><div><b>BYE</b><span>One-point unpaired round</span></div></div><p class="help-note">Individual scoring awards 1 point for a win or bye, ½ point for a draw, and 0 for a loss. Select a different result to correct an entry before advancing. Every completed round remains available in the Rounds tab.</p></section>
   <section id="help-tiebreaks" class="help-section"><div class="help-section-title"><span>${icon("scale", 20)}</span><div><span class="eyebrow">Ranking order</span><h3>Standings & tie-breaks</h3></div></div><p>Individual players are sorted using the following order. The first value that differs decides the higher rank.</p><ol class="help-ranking"><li><span>1</span><div><b>Points</b><p>Total game points earned.</p></div></li><li><span>2</span><div><b>Buchholz</b><p>The sum of all opponents’ final or current point totals. A player who faced stronger-scoring opposition receives the higher value.</p></div></li><li><span>3</span><div><b>Sonneborn–Berger</b><p>The full score of every defeated opponent plus half the score of every drawn opponent.</p></div></li><li><span>4</span><div><b>Wins</b><p>The player with more victories ranks higher.</p></div></li><li><span>5</span><div><b>Rating</b><p>Rating resolves a tie that remains after all competition tie-breaks.</p></div></li></ol><aside class="help-callout"><b>Buchholz Cut 1</b><p>The standings report also displays Buchholz with the lowest opponent score removed. It is an informational field and is not currently used in the automatic ranking order.</p></aside></section>
   <section id="help-teams" class="help-section"><div class="help-section-title"><span>${icon("users", 20)}</span><div><span class="eyebrow">Boards become matches</span><h3>Team tournaments</h3></div></div><div class="help-card-grid help-team-grid"><article class="help-card"><h4>2–1–0 match points</h4><p>A team earns 2 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>3–1–0 match points</h4><p>A team earns 3 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>Board points only</h4><p>Teams rank directly by the total points scored across their individual boards.</p></article></div><p>With match-point scoring, teams rank by <b>match points</b>, then <b>board points</b>, then <b>team Buchholz</b>, then team name. With board-points-only scoring, board points are primary. Team Buchholz sums the primary scores of all opposing teams.</p></section>
+  <section id="help-shortcuts" class="help-section"><div class="help-section-title"><span>${icon("keyboard", 20)}</span><div><span class="eyebrow">Faster controls</span><h3>Keyboard shortcuts</h3></div></div><p>Use these shortcuts with a desktop or external keyboard. On macOS, use Command instead of Control.</p><div class="shortcut-list"><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>P</kbd></span><b>Toggle Projector mode</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>L</kbd></span><b>Show or hide left navigation</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>T</kbd></span><b>Show or hide the top bar</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>H</kbd></span><b>Open Help</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>D</kbd></span><b>Open Dashboard</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>A</kbd></span><b>Open Appearance & layout</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>N</kbd></span><b>Create a player profile</b></div><div><span><kbd>Esc</kbd></span><b>Close a dialog or Projector mode</b></div></div><aside class="help-callout"><b>Navigation safety</b><p>The left and top bars can always be restored with the same shortcut, even when their floating restore controls are hidden or out of view.</p></aside></section>
   <section id="help-tools" class="help-section"><div class="help-section-title"><span>${icon("wrench", 20)}</span><div><span class="eyebrow">Presentation & safekeeping</span><h3>Tools, exports & local data</h3></div></div><div class="help-definition-list"><div><b>Projector mode</b><p>Cycles through standings, competition details, and the tournament overview. Round Robin events show their crosstable; Knockout events show the bracket. Previous and Next controls are also available.</p></div><div><b>Player results</b><p>Select a player name in standings or results to open their complete round-by-round tournament record.</p></div><div><b>Exports</b><p>Download PGN, PDF reports, CSV data, images, JSON backups, or a ZIP tournament package from the top toolbar.</p></div><div><b>Backup and restore</b><p>JSON backups preserve tournament data and can be imported later or moved to another browser.</p></div><div><b>Local autosave</b><p>Every action is saved in this browser using local storage. No account or internet connection is required after the app is cached.</p></div><div><b>Multiple tournaments</b><p>Use the tournament switcher in the top bar to create, open, or remove locally stored events.</p></div></div><aside class="help-callout warning"><b>Protect your records</b><p>Browser data can be cleared by device cleanup or privacy settings. Export a JSON backup regularly, especially before removing a tournament.</p></aside></section>
 </div></div></section>`;
 }
@@ -892,24 +902,7 @@ function roundRobinTableView() {
     })
     .join("");
 
-  const mobileStandings = participants
-    .map((profile, index) => {
-      const entry = stats.get(profile.id);
-      return `<tr><td>${index + 1}</td><td class="rr-mobile-player"><span>${countryFlag(profile.country)}</span><button data-player="${profile.id}">${h(profile.name)}</button><small>${profile.rating}</small></td><td class="rr-mobile-points">${(entry?.points || 0).toFixed(1)}</td><td><b>#${entry?.rank || "—"}</b></td></tr>`;
-    })
-    .join("");
-  const mobileSchedule = games
-    .sort((a, b) => a.round - b.round || a.game.board - b.game.board)
-    .map(({ round, game }) => {
-      const white = player(game.whiteId);
-      const black = player(game.blackId);
-      const current = round === currentRound()?.number;
-      const result = game.result ? resultNotation(game.result) : "Pending";
-      return `<tr class="${current ? "rr-mobile-current" : ""}"><td><b>R${round}</b><small>B${game.board}</small></td><td><button data-player="${game.whiteId}">${h(white?.name || "Player")}</button></td><td class="rr-mobile-result ${game.result ? "" : "pending"}">${h(result)}</td><td>${black ? `<button data-player="${game.blackId}">${h(black.name)}</button>` : "BYE"}</td></tr>`;
-    })
-    .join("");
-
-  return `<section class="round-robin-panel" aria-label="Round Robin crosstable"><div class="bracket-panel-head"><div><span class="eyebrow">All-play-all matrix</span><h3>Round Robin table</h3></div><span class="pill">${participants.length} players · ${state.rounds.length}/${state.tournament.totalRounds} rounds</span></div><div class="round-robin-scroll"><table class="round-robin-table"><thead><tr><th>No.</th><th>Player</th>${participants.map((_, index) => `<th aria-label="Player ${index + 1}">${index + 1}</th>`).join("")}<th>Pts.</th><th>Rk.</th></tr></thead><tbody>${rows}</tbody></table></div><div class="rr-mobile-tables"><section><h4>Standings</h4><div class="rr-mobile-table-frame"><table class="rr-mobile-standings"><thead><tr><th>No.</th><th>Player</th><th>Pts.</th><th>Rank</th></tr></thead><tbody>${mobileStandings}</tbody></table></div></section><section><h4>Round results</h4><div class="rr-mobile-table-frame"><table class="rr-mobile-schedule"><thead><tr><th>Round</th><th>White</th><th>Result</th><th>Black</th></tr></thead><tbody>${mobileSchedule || '<tr><td colspan="4" class="rr-mobile-empty">Pairings have not been created.</td></tr>'}</tbody></table></div></section></div><div class="rr-legend"><span><i class="rr-white"></i> Played as White</span><span><i class="rr-black"></i> Played as Black</span><span><i class="rr-current"></i> Current round</span></div></section>`;
+  return `<section class="round-robin-panel" aria-label="Round Robin crosstable"><div class="bracket-panel-head"><div><span class="eyebrow">All-play-all matrix</span><h3>Round Robin table</h3></div><span class="pill">${participants.length} players · ${state.rounds.length}/${state.tournament.totalRounds} rounds</span></div><div class="round-robin-scroll"><table class="round-robin-table"><thead><tr><th>No.</th><th>Player</th>${participants.map((_, index) => `<th aria-label="Player ${index + 1}">${index + 1}</th>`).join("")}<th>Pts.</th><th>Rk.</th></tr></thead><tbody>${rows}</tbody></table></div><p class="rr-mobile-scroll-hint">Swipe sideways to view the complete matrix. Player numbers and names stay pinned.</p><div class="rr-legend"><span><i class="rr-white"></i> Played as White</span><span><i class="rr-black"></i> Played as Black</span><span><i class="rr-current"></i> Current round</span></div></section>`;
 }
 
 function teamPairingsCards(round: Round): string {
@@ -999,10 +992,8 @@ function board(g: Round["pairings"][number], r: Round) {
       ? []
       : ([["½-½", "½–½"]] as [NonNullable<GameResult>, string][])),
     ["0-1", "0–1"],
-    ["1F-0F", "W/F"],
-    ["0F-1F", "F/W"],
   ];
-  return `<div class="board-card"><span class="board-no">B${g.board}</span><div class="player-side"><span class="piece white">♔</span><span><b>${h(w?.name)}</b><small class="muted" style="display:block">${w?.rating}</small></span></div><div class="result-buttons" aria-label="Result for board ${g.board}">${choices.map(([v, l]) => `<button data-result="${v}" data-game="${g.id}" ${!r.locked || state.tournament.finished ? "disabled" : ""} class="${g.result === v ? "selected" : ""}" title="${v.includes("F") ? "Forfeit result" : v}">${l}</button>`).join("")}</div><div class="player-side" style="justify-content:flex-end;text-align:right"><span><b>${h(b.name)}</b><small class="muted" style="display:block">${b.rating}</small></span><span class="piece black">♚</span></div></div>`;
+  return `<div class="board-card"><span class="board-no">B${g.board}</span><div class="player-side"><span class="piece white">♔</span><span><b>${h(w?.name)}</b><small class="muted" style="display:block">${w?.rating}</small></span></div><div class="result-buttons" aria-label="Result for board ${g.board}">${choices.map(([v, l]) => `<button data-result="${v}" data-game="${g.id}" ${!r.locked || state.tournament.finished ? "disabled" : ""} class="${g.result === v ? "selected" : ""}" title="${v}">${l}</button>`).join("")}</div><div class="player-side" style="justify-content:flex-end;text-align:right"><span><b>${h(b.name)}</b><small class="muted" style="display:block">${b.rating}</small></span><span class="piece black">♚</span></div></div>`;
 }
 function federationCode(country: string): string {
   const value = country.trim();
@@ -1252,6 +1243,12 @@ function appearanceSettings() {
       description:
         "Deep society green and warm ivory inspired by classic chess print.",
     },
+    {
+      id: "ggcc",
+      name: "GGCC",
+      description:
+        "GMA Gambit Chess Club black, championship gold, and crisp white.",
+    },
   ];
   return `<div class="modal-backdrop"><section class="modal appearance-modal" role="dialog" aria-modal="true" aria-labelledby="appearance-title" data-modal><div class="modal-head"><div><span class="eyebrow">Application settings</span><h2 id="appearance-title">Appearance & layout</h2><p class="muted">Preferences are saved on this device and apply to every tournament.</p></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><section class="appearance-setting-group" aria-labelledby="theme-setting-title"><h3 id="theme-setting-title">Choose a theme</h3><div class="theme-options" role="radiogroup" aria-label="Color theme">${choices
     .map(
@@ -1419,6 +1416,23 @@ function profileModal(id: string) {
       : '<div class="player-results-empty"><span>♙</span><b>No results recorded</b><p class="muted">This player’s games will appear here after pairings are created.</p></div>'
   }</section></section></div>`;
 }
+function activateProjector(): void {
+  clearInterval(projectorTimer);
+  projector = true;
+  projectorSlide = 0;
+  projectorTimer = window.setInterval(() => {
+    projectorSlide = (projectorSlide + 1) % 3;
+    render();
+  }, 9000);
+  document.documentElement.requestFullscreen?.().catch(() => {});
+}
+
+function deactivateProjector(): void {
+  projector = false;
+  clearInterval(projectorTimer);
+  document.exitFullscreen?.().catch(() => {});
+}
+
 function projectorView() {
   const roundRobin = state.tournament.type === "Round Robin";
   const knockout = state.tournament.type === "Knockout";
@@ -2161,21 +2175,13 @@ app.addEventListener("click", (e) => {
       render();
     }
   } else if (a === "projector") {
-    projector = true;
-    projectorSlide = 0;
-    projectorTimer = window.setInterval(() => {
-      projectorSlide = (projectorSlide + 1) % 3;
-      render();
-    }, 9000);
-    document.documentElement.requestFullscreen?.().catch(() => {});
+    activateProjector();
     render();
   } else if (a === "projector-prev" || a === "projector-next") {
     projectorSlide = (projectorSlide + (a === "projector-next" ? 1 : 2)) % 3;
     render();
   } else if (a === "projector-close") {
-    projector = false;
-    clearInterval(projectorTimer);
-    document.exitFullscreen?.().catch(() => {});
+    deactivateProjector();
     render();
   }
 });
@@ -2349,21 +2355,51 @@ document.addEventListener("keydown", (e) => {
     }
   }
 
+  const shortcut = (e.ctrlKey || e.metaKey) && e.altKey;
+  if (shortcut) {
+    const key = e.key.toLowerCase();
+    if (["a", "d", "h", "l", "n", "p", "t"].includes(key)) {
+      e.preventDefault();
+      if (key === "p") {
+        if (projector) deactivateProjector();
+        else {
+          modal = "";
+          selectedPlayer = null;
+          activateProjector();
+        }
+      } else if (key === "l") {
+        layoutPreferences.hideSidebar = !layoutPreferences.hideSidebar;
+        saveLayoutPreferences();
+      } else if (key === "t") {
+        layoutPreferences.hideTopbar = !layoutPreferences.hideTopbar;
+        saveLayoutPreferences();
+      } else if (key === "h" || key === "d") {
+        if (projector) deactivateProjector();
+        modal = "";
+        selectedPlayer = null;
+        state.view = key === "h" ? "help" : "dashboard";
+      } else if (key === "a") {
+        if (projector) deactivateProjector();
+        selectedPlayer = null;
+        modal = "appearance";
+      } else if (key === "n") {
+        if (projector) deactivateProjector();
+        state.view = "players";
+        selectedPlayer = null;
+        modal = "player";
+      }
+      render();
+      return;
+    }
+  }
+
   if (e.key === "Escape") {
     if (dialog) {
       requestModalClose();
       return;
     }
     exportOpen = false;
-    if (projector) {
-      projector = false;
-      clearInterval(projectorTimer);
-    }
-    render();
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
-    e.preventDefault();
-    modal = "player";
+    if (projector) deactivateProjector();
     render();
   }
 });

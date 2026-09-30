@@ -68,17 +68,34 @@ describe("player creation interaction", () => {
 
     // Verify persistence independently of the rendered page.
     const saved = JSON.parse(localStorage.getItem("castling.library.v2")!);
-    expect(Object.values(saved.players)).toHaveLength(4);
+    expect(Object.values(saved.players)).toHaveLength(6);
     expect(
       Object.values(saved.players).map((player: any) => player.name),
     ).toEqual(
       expect.arrayContaining([
-        "Papa",
         "XanjoFish",
         "Black Horse",
+        "Joe",
+        "Johnny",
+        "Hana",
         "Ada Knight",
       ]),
     );
+    expect(
+      Object.values(saved.players).map((player: any) => player.name),
+    ).not.toContain("Papa");
+    expect(saved.players["preset-joe"]).toMatchObject({
+      age: 19,
+      rating: 1600,
+    });
+    expect(saved.players["preset-johnny"]).toMatchObject({
+      age: 32,
+      rating: 1590,
+    });
+    expect(saved.players["preset-hana"]).toMatchObject({
+      age: 18,
+      rating: 1642,
+    });
     expect(saved.tournaments[tournamentId].players[0].name).toBe("Ada Knight");
   });
 });
