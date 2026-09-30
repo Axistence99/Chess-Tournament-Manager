@@ -6,6 +6,8 @@ import {
   generateRoundRobin,
   generateSwiss,
   knockoutRoundCount,
+  recommendedSwissRoundCount,
+  roundRobinRoundCount,
 } from "./pairingEngine";
 
 function players(count: number): Player[] {
@@ -23,6 +25,15 @@ function players(count: number): Player[] {
 }
 
 describe("Swiss pairing", () => {
+  it("recommends compact rounds from the active field size", () => {
+    expect(recommendedSwissRoundCount(0)).toBe(0);
+    expect(recommendedSwissRoundCount(2)).toBe(1);
+    expect(recommendedSwissRoundCount(3)).toBe(2);
+    expect(recommendedSwissRoundCount(4)).toBe(2);
+    expect(recommendedSwissRoundCount(8)).toBe(3);
+    expect(recommendedSwissRoundCount(9)).toBe(4);
+  });
+
   it("pairs every active player once and awards one odd-player bye", () => {
     const pairings = generateSwiss(players(5), []);
     const ids = pairings.flatMap((game) =>
@@ -65,6 +76,14 @@ describe("Swiss pairing", () => {
 });
 
 describe("round-robin pairing", () => {
+  it("derives the round count from even and odd field sizes", () => {
+    expect(roundRobinRoundCount(0)).toBe(0);
+    expect(roundRobinRoundCount(1)).toBe(0);
+    expect(roundRobinRoundCount(2)).toBe(1);
+    expect(roundRobinRoundCount(4)).toBe(3);
+    expect(roundRobinRoundCount(5)).toBe(5);
+  });
+
   it("schedules every pair exactly once over n-1 rounds", () => {
     const roster = players(4);
     const rounds: Round[] = [];
@@ -84,6 +103,31 @@ describe("round-robin pairing", () => {
       ),
     );
     expect(new Set(pairs).size).toBe(6);
+    expect(
+      pairs.every((pair) => pair.split("-")[0] !== pair.split("-")[1]),
+    ).toBe(true);
+  });
+
+  it("gives an odd field one bye per round without self-pairings", () => {
+    const roster = players(5);
+    const rounds: Round[] = [];
+    for (let index = 0; index < roundRobinRoundCount(roster.length); index++) {
+      rounds.push({
+        number: index + 1,
+        pairings: generateRoundRobin(roster, rounds),
+        locked: true,
+        completed: true,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    const games = rounds.flatMap((round) => round.pairings);
+    const pairs = games
+      .filter((game) => game.blackId)
+      .map((game) => [game.whiteId, game.blackId].sort().join("-"));
+    expect(rounds).toHaveLength(5);
+    expect(new Set(pairs).size).toBe(10);
+    expect(games.filter((game) => !game.blackId)).toHaveLength(5);
+    expect(games.every((game) => game.whiteId !== game.blackId)).toBe(true);
   });
 });
 

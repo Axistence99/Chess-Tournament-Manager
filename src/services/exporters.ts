@@ -4,6 +4,7 @@ import { toPng, toJpeg } from "html-to-image";
 import JSZip from "jszip";
 import type { AppState } from "../models";
 import { standings } from "./standings";
+import { teamStandings } from "./teamTournament";
 import { pgn } from "./pgnExporter";
 import { download, slug } from "./storage";
 const find = (s: AppState, id: string | null) =>
@@ -31,7 +32,7 @@ function reportTitle(s: AppState): string {
   const missing =
     s.rounds.at(-1)?.pairings.filter((game) => game.result === null).length ||
     0;
-  if (s.tournament.finished) return `Final rankings after Round ${round}`;
+  if (s.tournament.finished) return "Final Rank";
   if (round === 0) return "Starting Rank";
   return `Rank after Round ${round}${missing ? ` (${missing} results missing)` : ""}`;
 }
@@ -93,48 +94,77 @@ export function makePdf(
   };
 
   if (rankingReport) {
-    const positions = [10, 20, 31, 40, 105, 119, 134, 190, 207, 225, 243];
-    row(
-      [
-        "Rk.",
-        "SNo",
-        "",
-        "Name",
-        "FED",
-        "Rtg",
-        "Club/City",
-        "Pts.",
-        "TB1",
-        "TB2",
-        "TB3",
-      ],
-      positions,
-    );
-    standings(s.players, s.rounds).forEach((entry) => {
-      const startNumber =
-        s.players.findIndex((player) => player.id === entry.player.id) + 1;
-      // Carry the podium hierarchy into print without compromising legibility.
-      if (entry.rank === 1) d.setTextColor(148, 105, 25);
-      else if (entry.rank === 2) d.setTextColor(90, 104, 101);
-      else if (entry.rank === 3) d.setTextColor(139, 78, 43);
-      else d.setTextColor(30);
+    const teamFormat = s.tournament.type.startsWith("Team");
+    if (teamFormat) {
+      const positions = [12, 24, 88, 150, 169, 187, 204, 221, 242];
+      row(
+        ["Rk.", "Team", "Roster", "MP", "BP", "W", "D", "L", "TB1"],
+        positions,
+      );
+      teamStandings(
+        s.teams || [],
+        s.rounds,
+        s.tournament.teamScoring || "2-1-0",
+      ).forEach((entry) =>
+        row(
+          [
+            String(entry.rank),
+            entry.team.name,
+            entry.team.playerIds.map((id) => find(s, id)).join(", "),
+            String(entry.matchPoints),
+            entry.boardPoints.toFixed(1),
+            String(entry.wins),
+            String(entry.draws),
+            String(entry.losses),
+            entry.buchholz.toFixed(1),
+          ],
+          positions,
+        ),
+      );
+    } else {
+      const positions = [10, 20, 31, 40, 105, 119, 134, 190, 207, 225, 243];
       row(
         [
-          String(entry.rank),
-          String(startNumber),
+          "Rk.",
+          "SNo",
           "",
-          entry.player.name,
-          federation(entry.player.country),
-          String(entry.player.rating || 0),
-          entry.player.club || "—",
-          entry.points.toFixed(1),
-          entry.buchholz.toFixed(1),
-          entry.buchholzCut.toFixed(1),
-          entry.sonneborn.toFixed(1),
+          "Name",
+          "FED",
+          "Rtg",
+          "Club/City",
+          "Pts.",
+          "TB1",
+          "TB2",
+          "TB3",
         ],
         positions,
       );
-    });
+      standings(s.players, s.rounds).forEach((entry) => {
+        const startNumber =
+          s.players.findIndex((player) => player.id === entry.player.id) + 1;
+        // Carry the podium hierarchy into print without compromising legibility.
+        if (entry.rank === 1) d.setTextColor(148, 105, 25);
+        else if (entry.rank === 2) d.setTextColor(90, 104, 101);
+        else if (entry.rank === 3) d.setTextColor(139, 78, 43);
+        else d.setTextColor(30);
+        row(
+          [
+            String(entry.rank),
+            String(startNumber),
+            "",
+            entry.player.name,
+            federation(entry.player.country),
+            String(entry.player.rating || 0),
+            entry.player.club || "—",
+            entry.points.toFixed(1),
+            entry.buchholz.toFixed(1),
+            entry.buchholzCut.toFixed(1),
+            entry.sonneborn.toFixed(1),
+          ],
+          positions,
+        );
+      });
+    }
   } else if (kind === "players") {
     const positions = [14, 29, 94, 122, 162];
     row(["#", "Player", "Rating", "Club", "Country"], positions);

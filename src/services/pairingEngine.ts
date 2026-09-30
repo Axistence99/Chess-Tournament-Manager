@@ -39,6 +39,22 @@ function metadata(players: Player[], rounds: Round[]) {
   return m;
 }
 /** Score-group greedy Swiss pairing with bounded backtracking; repeat and color penalties are minimized. */
+export function roundRobinRoundCount(playerCount: number): number {
+  if (playerCount < 2) return 0;
+  // Even fields play n - 1 rounds. Odd fields need one additional rotation so
+  // each participant receives one bye while still meeting every opponent.
+  return playerCount % 2 === 0 ? playerCount - 1 : playerCount;
+}
+
+/**
+ * Recommend enough Swiss rounds for one undefeated player to emerge. A manual
+ * value may be larger, but the UI caps it at the no-repeat schedule limit.
+ */
+export function recommendedSwissRoundCount(entrantCount: number): number {
+  if (entrantCount < 2) return 0;
+  return Math.ceil(Math.log2(entrantCount));
+}
+
 export function generateRoundRobin(
   players: Player[],
   rounds: Round[],
