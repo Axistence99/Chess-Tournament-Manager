@@ -17,6 +17,7 @@ export const PRESET_PLAYERS: Player[] = [
     club: "",
     fideId: "",
     ageCategory: categoryForAge(11),
+    avatar: "./profiles/xanjofish.webp",
     active: true,
   },
   {
@@ -61,6 +62,7 @@ export const PRESET_PLAYERS: Player[] = [
     club: "",
     fideId: "",
     ageCategory: categoryForAge(18),
+    avatar: "./profiles/hana.webp",
     active: true,
   },
 ];

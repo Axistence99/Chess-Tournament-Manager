@@ -95,6 +95,10 @@ describe("player creation interaction", () => {
     expect(saved.players["preset-hana"]).toMatchObject({
       age: 18,
       rating: 1642,
+      avatar: "./profiles/hana.webp",
+    });
+    expect(saved.players["preset-xanjofish"]).toMatchObject({
+      avatar: "./profiles/xanjofish.webp",
     });
     expect(saved.tournaments[tournamentId].players[0].name).toBe("Ada Knight");
   });

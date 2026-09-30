@@ -1,9 +1,12 @@
 /** Offline service worker using network-first HTML and cache-first static assets. */
-const CACHE = "chest-tournament-v67";
+const CACHE = "chest-tournament-v69";
 const SHELL = [
   "./",
   "./index.html",
   "./chest-logo.webp",
+  "./ggcc-logo.png",
+  "./profiles/hana.webp",
+  "./profiles/xanjofish.webp",
   "./favicon.png",
   "./apple-touch-icon.png",
 ];

@@ -17,8 +17,14 @@
     <script>
       (() => {
         const theme = localStorage.getItem("castling.theme.v1");
-        if (["dark", "light", "criterion"].includes(theme))
+        if (["dark", "light", "criterion", "ggcc"].includes(theme)) {
           document.documentElement.dataset.theme = theme;
+          if (theme === "ggcc") {
+            document.querySelector('link[rel="icon"]').href = "./ggcc-logo.png";
+            document.querySelector('link[rel="apple-touch-icon"]').href =
+              "./ggcc-logo.png";
+          }
+        }
       })();
     </script>
     <title>Chest-Tournament Manager</title>

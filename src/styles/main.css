@@ -4024,8 +4024,11 @@ body.modal-open {
   border-color: #503b17;
   background: #080c12e8;
 }
-:root[data-theme="ggcc"] .brand img {
+:root[data-theme="ggcc"] .brand img,
+:root[data-theme="ggcc"] .creation-identity img {
+  object-fit: contain;
   border-color: #e4ae35;
+  background: #e7e7e7;
   box-shadow:
     0 0 0 2px #090d13,
     0 7px 22px #d2941838;

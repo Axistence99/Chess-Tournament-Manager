@@ -8,7 +8,7 @@ import {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((library) => {
     localStorage.setItem("castling.library.v2", JSON.stringify(library));
-    localStorage.setItem("castling.player-presets.v2", "tested");
+    localStorage.setItem("castling.player-presets.v3", "tested");
   }, libraryWithCompletedTournament());
   await page.goto("/");
 });
@@ -150,12 +150,24 @@ test("appearance settings switch and persist all four themes", async ({
     "content",
     "#080b10",
   );
+  await expect(page.locator(".brand img")).toHaveAttribute(
+    "src",
+    "./ggcc-logo.png",
+  );
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "./ggcc-logo.png",
+  );
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "ggcc");
 
   await page.getByRole("button", { name: /Appearance/ }).click();
   await page.getByRole("radio", { name: /Dark/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator(".brand img")).toHaveAttribute(
+    "src",
+    "./chest-logo.webp",
+  );
   await expect(page.locator('.nav [data-view="dashboard"]')).toHaveClass(
     /active/,
   );
