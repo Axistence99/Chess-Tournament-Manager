@@ -15,7 +15,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Reusable player-profile directory with starter profiles, compressed photos, flagged federation selection, CSV import/export, and per-tournament registration
 - PGN, PDF, PNG/JPG, and complete ZIP package export in the browser
 - Projector mode, keyboard navigation, responsive mobile layout, and accessible focus states
-- Persistent Dark, Light, and classic green-and-ivory Criterion themes
+- Persistent Dark, Light, classic green-and-ivory Criterion, and black-and-gold GGCC (GMA Gambit Chess Club) themes
 - Automatic localStorage persistence, JSON backup and restore
 - Service worker for offline use after the first successful load
 - Relative asset paths and GitHub Pages deployment workflow

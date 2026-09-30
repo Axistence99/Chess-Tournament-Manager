@@ -8,7 +8,7 @@ import {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((library) => {
     localStorage.setItem("castling.library.v2", JSON.stringify(library));
-    localStorage.setItem("castling.player-presets.v1", "tested");
+    localStorage.setItem("castling.player-presets.v2", "tested");
   }, libraryWithCompletedTournament());
   await page.goto("/");
 });
@@ -72,9 +72,55 @@ test("help tab explains formats, pairings, scoring, and tie-breaks", async ({
     "Sonneborn–Berger",
   );
   await expect(page.locator("#help-teams")).toContainText("3–1–0 match points");
+  await expect(
+    page.getByRole("heading", { name: "Keyboard shortcuts" }),
+  ).toBeVisible();
+  await expect(page.locator("#help-shortcuts")).toContainText(
+    "Toggle Projector mode",
+  );
 });
 
-test("appearance settings switch and persist all three themes", async ({
+test("keyboard shortcuts control presentation, layout, and navigation", async ({
+  page,
+}) => {
+  await page.keyboard.press("Control+Alt+P");
+  await expect(page.locator(".projector")).toBeVisible();
+  await page.keyboard.press("Control+Alt+P");
+  await expect(page.locator(".projector")).toHaveCount(0);
+
+  await page.keyboard.press("Control+Alt+L");
+  await expect(page.locator(".app")).toHaveClass(/sidebar-hidden/);
+  await page.keyboard.press("Control+Alt+L");
+  await expect(page.locator(".app")).not.toHaveClass(/sidebar-hidden/);
+
+  await page.keyboard.press("Control+Alt+T");
+  await expect(page.locator(".app")).toHaveClass(/topbar-hidden/);
+  await page.keyboard.press("Control+Alt+T");
+  await expect(page.locator(".app")).not.toHaveClass(/topbar-hidden/);
+
+  await page.keyboard.press("Control+Alt+H");
+  await expect(page.locator('.nav [data-view="help"]')).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await page.keyboard.press("Control+Alt+D");
+  await expect(page.locator('.nav [data-view="dashboard"]')).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  await page.keyboard.press("Control+Alt+A");
+  await expect(
+    page.getByRole("heading", { name: "Appearance & layout" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  await page.keyboard.press("Control+Alt+N");
+  await expect(page.locator("#player-form")).toBeVisible();
+});
+
+test("appearance settings switch and persist all four themes", async ({
   page,
 }) => {
   await page.locator('.nav [data-view="players"]').click();
@@ -98,6 +144,16 @@ test("appearance settings switch and persist all three themes", async ({
   await expect(page.locator("html")).toHaveAttribute("data-theme", "criterion");
 
   await page.getByRole("button", { name: /Appearance/ }).click();
+  await page.getByRole("radio", { name: /GGCC/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "ggcc");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#080b10",
+  );
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "ggcc");
+
+  await page.getByRole("button", { name: /Appearance/ }).click();
   await page.getByRole("radio", { name: /Dark/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator('.nav [data-view="dashboard"]')).toHaveClass(
@@ -118,6 +174,13 @@ test("desktop navigation bars can be hidden and restored safely", async ({
   await expect(page.locator(".app")).toHaveClass(/sidebar-hidden/);
   await expect(page.locator(".sidebar")).toBeHidden();
   await expect(sidebarToggle).toHaveAttribute("aria-checked", "true");
+  const topbarBox = await page.locator(".topbar").boundingBox();
+  const sidebarRestoreBox = await page
+    .getByRole("button", { name: "Show left navigation" })
+    .boundingBox();
+  expect(sidebarRestoreBox!.y).toBeGreaterThanOrEqual(
+    topbarBox!.y + topbarBox!.height,
+  );
 
   await topbarToggle.click();
   await expect(page.locator(".app")).toHaveClass(/topbar-hidden/);

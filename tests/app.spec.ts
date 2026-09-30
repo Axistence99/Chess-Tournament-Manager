@@ -29,7 +29,7 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
     page.getByRole("heading", { name: "Player management" }),
   ).toBeVisible();
   await expect(page.locator("#player-form")).toHaveCount(0);
-  for (const name of ["Papa", "XanjoFish", "Black Horse"]) {
+  for (const name of ["XanjoFish", "Black Horse", "Joe", "Johnny", "Hana"]) {
     const row = page.locator("tbody tr", { hasText: name });
     await expect(row).toBeVisible();
     await row.locator("[data-add-to-tournament]").click();
@@ -42,7 +42,7 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await page.selectOption('#player-form [name="country"]', "USA");
   await page.click('[data-action="save-player-profile"]');
   await expect(
-    page.getByText("4 registered for this tournament"),
+    page.getByText("6 registered for this tournament"),
   ).toBeVisible();
 
   await page.locator('.nav [data-view="standings"]').click();
@@ -56,10 +56,12 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   ).toBeVisible();
   await expect(page.locator('[data-action="generate"]')).toHaveCount(0);
   await expect(page.locator('[data-action="lock"]')).toHaveCount(0);
+  await expect(page.locator('[data-result="1F-0F"]')).toHaveCount(0);
+  await expect(page.locator('[data-result="0F-1F"]')).toHaveCount(0);
 
   const boards = page.locator('.board-card [data-result="1-0"]');
   const boardCount = await boards.count();
-  expect(boardCount).toBe(2);
+  expect(boardCount).toBe(3);
   for (let index = 0; index < boardCount; index++)
     await boards.nth(index).click();
 
