@@ -114,6 +114,9 @@ test("round robin and standings use mobile cards without horizontal scrolling", 
   await page.locator('.mobile-nav [data-view="standings"]').click();
   await expect(page.locator(".content .mobile-ranking-list")).toBeVisible();
   await expect(page.locator(".content .mobile-rank-card")).toHaveCount(4);
+  await expect(page.locator(".content .mobile-rank-card .avatar")).toHaveCount(
+    0,
+  );
   await expectStableNavigation(page);
 });
 

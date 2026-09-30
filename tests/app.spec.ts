@@ -25,7 +25,6 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await page.click('#creation-form button[type="submit"]');
 
   await expect(page.getByText("Browser QA Open").first()).toBeVisible();
-  await page.locator('.quick [data-action="go-players"]').click();
   await expect(
     page.getByRole("heading", { name: "Player management" }),
   ).toBeVisible();
@@ -75,6 +74,7 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(page.locator(".podium-2")).toBeVisible();
   await expect(page.locator(".podium-3")).toBeVisible();
   await expect(page.locator(".podium article").nth(1)).toHaveClass(/podium-1/);
+  await expect(page.locator(".podium .avatar")).toHaveCount(0);
 
   await page.locator('.nav [data-view="dashboard"]').click();
   await expect(page.locator('[data-action="edit-tournament"]')).toBeDisabled();

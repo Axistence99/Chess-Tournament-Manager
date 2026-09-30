@@ -171,6 +171,15 @@ const tournamentStarted = () => state.rounds.length > 0;
 const isTeamTournament = (type = state.tournament.type) =>
   type === "Team Swiss" || type === "Team Round Robin";
 
+const isRoundRobinTournament = () =>
+  state.tournament.type === "Round Robin" ||
+  state.tournament.type === "Team Round Robin";
+
+const roundRobinHasRecordedResults = () =>
+  state.rounds.some((round) =>
+    round.pairings.some((pairing) => pairing.result !== null),
+  );
+
 /** Keep a not-yet-started event aligned with its active field. */
 function syncAutomaticRoundCount(): boolean {
   if (tournamentStarted()) return false;
@@ -998,7 +1007,7 @@ function standingsTable(
     .join("")}</tbody></table></div><div class="mobile-ranking-list">${rows
     .map(
       (entry) =>
-        `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${entry.rank}</span><div class="mobile-rank-player">${avatarMarkup(entry.player)}<span><button data-player="${entry.player.id}">${h(entry.player.name)}</button><small>${federationCode(entry.player.country)} · ${entry.player.rating || 0}${entry.player.club ? ` · ${h(entry.player.club)}` : ""}</small></span></div><div class="mobile-rank-score"><b>${entry.points.toFixed(1)}</b><small>Points</small></div><dl><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div><div><dt>TB2</dt><dd>${entry.buchholzCut.toFixed(1)}</dd></div><div><dt>TB3</dt><dd>${entry.sonneborn.toFixed(1)}</dd></div></dl></article>`,
+        `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${entry.rank}</span><div class="mobile-rank-player"><span><button data-player="${entry.player.id}">${h(entry.player.name)}</button><small>${federationCode(entry.player.country)} · ${entry.player.rating || 0}${entry.player.club ? ` · ${h(entry.player.club)}` : ""}</small></span></div><div class="mobile-rank-score"><b>${entry.points.toFixed(1)}</b><small>Points</small></div><dl><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div><div><dt>TB2</dt><dd>${entry.buchholzCut.toFixed(1)}</dd></div><div><dt>TB3</dt><dd>${entry.sonneborn.toFixed(1)}</dd></div></dl></article>`,
     )
     .join("")}</div></section>`;
 }
@@ -1081,7 +1090,6 @@ function standingsView() {
           value: entry.points.toFixed(1),
           unit: "points",
           playerId: entry.player.id,
-          portrait: avatarMarkup(entry.player),
         })),
       )
     : "";
@@ -1359,11 +1367,14 @@ function profileModal(id: string) {
   }</section></section></div>`;
 }
 function projectorView() {
-  const labels = [
-    "Live Standings",
-    `Round ${state.rounds.length} Pairings`,
-    "Tournament Overview",
-  ];
+  const roundRobin = state.tournament.type === "Round Robin";
+  const knockout = state.tournament.type === "Knockout";
+  const competitionLabel = roundRobin
+    ? "Round Robin Table"
+    : knockout
+      ? "Elimination Bracket"
+      : `Round ${state.rounds.length} Pairings`;
+  const labels = ["Live Standings", competitionLabel, "Tournament Overview"];
   let body = "";
   if (projectorSlide === 0)
     body = isTeamTournament()
@@ -1375,15 +1386,18 @@ function projectorView() {
           ).slice(0, 12),
         )
       : standingsTable(standings(state.players, state.rounds).slice(0, 12));
-  else if (projectorSlide === 1)
-    body = currentRound()
-      ? `<div class="card">${currentRound()!
-          .pairings.map((g) => board(g, currentRound()!))
-          .join("")}</div>`
-      : "<p>No pairings yet.</p>";
-  else
+  else if (projectorSlide === 1) {
+    if (roundRobin) body = roundRobinTableView();
+    else if (knockout) body = knockoutBracketView();
+    else
+      body = currentRound()
+        ? `<div class="card">${currentRound()!
+            .pairings.map((g) => board(g, currentRound()!))
+            .join("")}</div>`
+        : "<p>No pairings yet.</p>";
+  } else
     body = `${metrics()}<div class="hero"><h2>${h(state.tournament.name)}</h2><p>${h(state.tournament.venue)} · ${h(state.tournament.date)}</p></div>`;
-  return `<section class="projector"><button class="btn close-projector" data-action="projector-close">${icon("x")} Exit</button><span class="eyebrow">${h(state.tournament.name)}</span><h1>${labels[projectorSlide]}</h1><div style="height:3vh"></div>${body}</section>`;
+  return `<section class="projector"><button class="btn close-projector" data-action="projector-close">${icon("x")} Exit</button><span class="eyebrow">${h(state.tournament.name)}</span><h1>${labels[projectorSlide]}</h1><div class="projector-stage">${body}</div><div class="projector-controls" aria-label="Projector slides"><button class="btn" data-action="projector-prev" aria-label="Previous projector slide">${icon("chevron-left")} Previous</button><span>${projectorSlide + 1} / 3</span><button class="btn" data-action="projector-next" aria-label="Next projector slide">Next ${icon("chevron-right")}</button></div></section>`;
 }
 // -----------------------------------------------------------------------------
 // Render lifecycle and progressive interaction enhancement
@@ -1506,6 +1520,21 @@ function prepareAutomaticRound(allowAdvance = false): boolean {
   return true;
 }
 
+/**
+ * An untouched Round Robin opener is only a draft schedule. Rebuild it when
+ * the roster changes so adding a third entrant after viewing Round 1 updates
+ * both the derived round count and every pairing. Recorded results lock it.
+ */
+function refreshScheduleAfterRosterChange(): void {
+  const rebuildRoundRobin =
+    isRoundRobinTournament() &&
+    state.rounds.length > 0 &&
+    !roundRobinHasRecordedResults();
+  if (rebuildRoundRobin) state.rounds = [];
+  syncAutomaticRoundCount();
+  if (rebuildRoundRobin) prepareAutomaticRound();
+}
+
 function prepareAndPersistAutomaticRound(): void {
   if (!prepareAutomaticRound()) return;
   try {
@@ -1542,6 +1571,7 @@ function submitPlayer(form: HTMLFormElement) {
   // explicit action so the same person can be reused across many events.
   const previousPlayers = [...state.players];
   const registerWithCurrentTournament = fd.get("registerCurrent") === "on";
+  let registrationBlocked = false;
   try {
     storage.savePlayer(data);
     if (registrationIndex >= 0) {
@@ -1549,19 +1579,28 @@ function submitPlayer(form: HTMLFormElement) {
       syncAutomaticRoundCount();
       storage.save(state);
     } else if (registerWithCurrentTournament) {
-      state.players.push({ ...data, active: true });
-      syncAutomaticRoundCount();
-      storage.save(state);
+      if (isRoundRobinTournament() && roundRobinHasRecordedResults()) {
+        registrationBlocked = true;
+        toast(
+          "Player profile saved, but Round Robin registration is locked after results are recorded.",
+          "info",
+        );
+      } else {
+        state.players.push({ ...data, active: true });
+        refreshScheduleAfterRosterChange();
+        storage.save(state);
+      }
     }
     modal = "";
-    toast(
-      id
-        ? "Player profile updated"
-        : registerWithCurrentTournament
-          ? "Player saved and added to the tournament"
-          : "Player profile saved",
-      "success",
-    );
+    if (!registrationBlocked)
+      toast(
+        id
+          ? "Player profile updated"
+          : registerWithCurrentTournament
+            ? "Player saved and added to the tournament"
+            : "Player profile saved",
+        "success",
+      );
     render();
   } catch (error) {
     console.error("Unable to save player profile", error);
@@ -1618,6 +1657,7 @@ function submitTeam(form: HTMLFormElement) {
 }
 
 function submitTournament(form: HTMLFormElement) {
+  const creatingTournament = draftingNewTournament || !hasTournament;
   if (tournamentStarted()) {
     toast("Tournament settings cannot change after Round 1 starts.", "error");
     return;
@@ -1665,6 +1705,7 @@ function submitTournament(form: HTMLFormElement) {
     }));
   hasTournament = true;
   draftingNewTournament = false;
+  if (creatingTournament) state.view = "players";
   roundCountEdited = false;
   modal = "";
   save("Tournament saved");
@@ -1826,8 +1867,15 @@ app.addEventListener("click", (e) => {
       .listPlayers()
       .find((candidate) => candidate.id === el.dataset.addToTournament);
     if (profile && !state.players.some((entry) => entry.id === profile.id)) {
+      if (isRoundRobinTournament() && roundRobinHasRecordedResults()) {
+        toast(
+          "Round Robin registration is locked after results are recorded.",
+          "error",
+        );
+        return;
+      }
       state.players.push({ ...profile, active: true });
-      syncAutomaticRoundCount();
+      refreshScheduleAfterRosterChange();
       save(`${profile.name} registered for ${state.tournament.name}`);
       render();
     }
@@ -1838,7 +1886,9 @@ app.addEventListener("click", (e) => {
     const profile = player(id);
     const hasHistory = state.rounds.some((round) =>
       round.pairings.some(
-        (pairing) => pairing.whiteId === id || pairing.blackId === id,
+        (pairing) =>
+          (pairing.whiteId === id || pairing.blackId === id) &&
+          (!isRoundRobinTournament() || pairing.result !== null),
       ),
     );
     if (hasHistory) {
@@ -1848,7 +1898,7 @@ app.addEventListener("click", (e) => {
       );
     } else {
       state.players = state.players.filter((entry) => entry.id !== id);
-      syncAutomaticRoundCount();
+      refreshScheduleAfterRosterChange();
       save(`${profile?.name || "Player"} removed from this tournament`);
       render();
     }
@@ -2055,6 +2105,9 @@ app.addEventListener("click", (e) => {
       render();
     }, 9000);
     document.documentElement.requestFullscreen?.().catch(() => {});
+    render();
+  } else if (a === "projector-prev" || a === "projector-next") {
+    projectorSlide = (projectorSlide + (a === "projector-next" ? 1 : 2)) % 3;
     render();
   } else if (a === "projector-close") {
     projector = false;
