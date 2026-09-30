@@ -72,7 +72,7 @@ const emptyState = (): AppState => ({
   rounds: [],
   view: "dashboard",
 });
-const PRESET_SEED_KEY = "castling.player-presets.v2";
+const PRESET_SEED_KEY = "castling.player-presets.v3";
 const THEME_KEY = "castling.theme.v1";
 const LAYOUT_KEY = "castling.layout.v1";
 type AppTheme = "dark" | "light" | "criterion" | "ggcc";
@@ -123,8 +123,18 @@ function applyTheme(theme: AppTheme): void {
             ? "#080b10"
             : "#0b1210",
     );
+  const ggcc = theme === "ggcc";
+  document
+    .querySelector<HTMLLinkElement>('link[rel="icon"]')
+    ?.setAttribute("href", ggcc ? "./ggcc-logo.png" : "./favicon.png");
+  document
+    .querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')
+    ?.setAttribute("href", ggcc ? "./ggcc-logo.png" : "./apple-touch-icon.png");
   localStorage.setItem(THEME_KEY, theme);
 }
+
+const themeLogoPath = () =>
+  activeTheme === "ggcc" ? "./ggcc-logo.png" : "./chest-logo.webp";
 
 applyTheme(activeTheme);
 
@@ -134,10 +144,22 @@ function seedPresetPlayers(): void {
   // Retired presets are removed only when no saved tournament references them,
   // so upgrading never destroys historical rosters or results.
   for (const id of RETIRED_PRESET_PLAYER_IDS) storage.removePlayer(id);
+  const existingProfiles = storage.listPlayers();
+  const existingById = new Map(
+    existingProfiles.map((profile) => [profile.id, profile]),
+  );
   const existingNames = new Set(
-    storage.listPlayers().map((profile) => profile.name.trim().toLowerCase()),
+    existingProfiles.map((profile) => profile.name.trim().toLowerCase()),
   );
   for (const preset of PRESET_PLAYERS) {
+    const existing = existingById.get(preset.id);
+    if (existing) {
+      // Add newly supplied preset photos without replacing an organizer's own
+      // custom profile picture or other edits.
+      if (preset.avatar && !existing.avatar)
+        storage.savePlayer({ ...existing, avatar: preset.avatar });
+      continue;
+    }
     if (!existingNames.has(preset.name.toLowerCase()))
       storage.savePlayer(preset);
   }
@@ -397,7 +419,7 @@ function shell(content: string) {
     layoutPreferences.hideSidebar || layoutPreferences.hideTopbar
       ? `<div class="layout-reveal-controls" aria-label="Hidden navigation controls">${layoutPreferences.hideSidebar ? `<button class="icon-btn" data-action="show-sidebar" aria-label="Show left navigation" data-tooltip="Show left navigation">${icon("panel-left-open")}</button>` : ""}${layoutPreferences.hideTopbar ? `<button class="icon-btn" data-action="show-topbar" aria-label="Show top bar" data-tooltip="Show top bar">${icon("panel-top-open")}</button>` : ""}</div>`
       : "";
-  return `<div class="app ${layoutClasses}"><aside class="sidebar"><div class="brand"><img src="./chest-logo.webp" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar"><button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" style="--nav-count:${navigationItems().length}" aria-label="Mobile navigation">${navButtons(true)}</nav>${revealControls}</div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
+  return `<div class="app ${layoutClasses}"><aside class="sidebar"><div class="brand"><img src="${themeLogoPath()}" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar"><button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" style="--nav-count:${navigationItems().length}" aria-label="Mobile navigation">${navButtons(true)}</nav>${revealControls}</div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
 }
 function exportMenu() {
   return `<div class="export-menu"><button class="btn" data-action="restore">${icon("upload")}<span class="hide-mobile"> Restore</span></button><button class="btn primary" data-action="toggle-export">${icon("download")}<span class="export-label">Export</span>${icon("chevron-down", 14)}</button>${exportOpen ? `<div class="dropdown" role="menu"><button data-export="pgn">${icon("file-text")} PGN · Tournament</button><button data-export="pdf-standings">${icon("file-text")} PDF · Standings</button><button data-export="pdf-pairings">${icon("file-text")} PDF · Pairings</button><button data-export="pdf-players">${icon("file-text")} PDF · Player list</button><button data-export="png">${icon("image")} PNG · 1080×1350</button><button data-export="jpg">${icon("image")} JPG · 1920×1080</button><button data-export="zip">${icon("package")} ZIP tournament package</button></div>` : ""}</div>`;
@@ -517,7 +539,7 @@ function creationPage() {
   const t = state.tournament;
   return `<main class="creation-page" id="main">
     <section class="creation-intro">
-      <div class="creation-identity"><img src="./chest-logo.webp" alt="Chest-Tournament Manager logo"><strong>Chest-Tournament Manager</strong></div>
+      <div class="creation-identity"><img src="${themeLogoPath()}" alt="${activeTheme === "ggcc" ? "GMA Gambit Chess Club logo" : "Chest-Tournament Manager logo"}"><strong>Chest-Tournament Manager</strong></div>
       <span class="eyebrow">Tournament setup</span>
       <h1>Create your tournament</h1>
       <p>Set the event details first. Your dashboard, player directory, pairings, standings, and exports become available after creation.</p>

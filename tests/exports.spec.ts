@@ -7,7 +7,7 @@ import { libraryWithCompletedTournament } from "./fixtures";
 async function openFixture(page: Page) {
   await page.addInitScript((library) => {
     localStorage.setItem("castling.library.v2", JSON.stringify(library));
-    localStorage.setItem("castling.player-presets.v2", "tested");
+    localStorage.setItem("castling.player-presets.v3", "tested");
   }, libraryWithCompletedTournament());
   await page.goto("/");
   await expect(page.getByText("QA Championship").first()).toBeVisible();

@@ -34,6 +34,12 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
     await expect(row).toBeVisible();
     await row.locator("[data-add-to-tournament]").click();
   }
+  await expect(
+    page.locator("tbody tr", { hasText: "Hana" }).locator(".avatar img"),
+  ).toHaveAttribute("src", "./profiles/hana.webp");
+  await expect(
+    page.locator("tbody tr", { hasText: "XanjoFish" }).locator(".avatar img"),
+  ).toHaveAttribute("src", "./profiles/xanjofish.webp");
 
   await page.locator('.section-head [data-action="add-player"]').click();
   await page.fill('#player-form [name="name"]', "QA Player");

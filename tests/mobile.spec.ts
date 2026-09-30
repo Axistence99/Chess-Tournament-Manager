@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
       active: true,
     };
     localStorage.setItem("castling.library.v2", JSON.stringify(library));
-    localStorage.setItem("castling.player-presets.v2", "tested");
+    localStorage.setItem("castling.player-presets.v3", "tested");
   }, libraryWithCompletedTournament());
   await page.goto("/");
 });
