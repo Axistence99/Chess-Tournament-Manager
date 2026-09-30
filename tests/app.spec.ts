@@ -74,6 +74,7 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(page.locator(".podium-1")).toBeVisible();
   await expect(page.locator(".podium-2")).toBeVisible();
   await expect(page.locator(".podium-3")).toBeVisible();
+  await expect(page.locator(".podium article").nth(1)).toHaveClass(/podium-1/);
 
   await page.locator('.nav [data-view="dashboard"]').click();
   await expect(page.locator('[data-action="edit-tournament"]')).toBeDisabled();

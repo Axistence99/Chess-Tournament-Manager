@@ -1013,6 +1013,36 @@ function teamStandingsTable(
   return `<div class="table-wrap"><table class="ranking-table team-ranking-table"><thead><tr><th>Rk.</th><th>Team</th><th>Roster</th>${boardOnly ? "" : "<th>MP</th>"}<th>BP</th><th>W</th><th>D</th><th>L</th><th>TB1</th></tr></thead><tbody>${rows.map((entry) => `<tr class="medal-${entry.rank}"><td class="rank">${entry.rank}</td><td><b>${h(entry.team.name)}</b></td><td>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(", ")}</td>${boardOnly ? "" : `<td class="score">${entry.matchPoints}</td>`}<td class="score">${entry.boardPoints.toFixed(1)}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td><td>${entry.buchholz.toFixed(1)}</td></tr>`).join("")}</tbody></table></div><div class="mobile-ranking-list team-mobile-ranking">${rows.map((entry) => `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${entry.rank}</span><div class="mobile-rank-player"><span class="team-mark">${icon("shield", 16)}</span><span><b>${h(entry.team.name)}</b><small>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(" · ")}</small></span></div><div class="mobile-rank-score"><b>${boardOnly ? entry.boardPoints.toFixed(1) : entry.matchPoints}</b><small>${boardOnly ? "BP" : "MP"}</small></div><dl><div><dt>Board pts</dt><dd>${entry.boardPoints.toFixed(1)}</dd></div><div><dt>W-D-L</dt><dd>${entry.wins}-${entry.draws}-${entry.losses}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div></dl></article>`).join("")}</div>`;
 }
 
+function finalResultsBanner(
+  entries: Array<{
+    name: string;
+    value: string;
+    unit: string;
+    playerId?: string;
+    portrait?: string;
+  }>,
+  teamEvent = false,
+): string {
+  const titles = ["Champion", "Runner-up", "Third place"];
+  const trophies = [icon("trophy", 44), icon("trophy", 34), icon("trophy", 34)];
+  const meta = [
+    state.tournament.venue || "Venue not set",
+    state.tournament.date,
+    `${state.rounds.length} round${state.rounds.length === 1 ? "" : "s"}`,
+  ];
+  const finalists = entries.slice(0, 3);
+  // Render in physical podium order—not just CSS order—so the champion remains
+  // the center column across themes, cached styles, exports, and screenshots.
+  const displayOrder =
+    finalists.length >= 3 ? [1, 0, 2] : finalists.length === 2 ? [1, 0] : [0];
+  return `<section class="final-banner"><div class="final-banner-head"><span class="final-kicker"><i></i>${teamEvent ? "Official team results" : "Official final results"}<i></i></span><h2>${h(state.tournament.name)}</h2><p>${meta.map(h).join(" · ")}</p></div><div class="podium">${displayOrder
+    .map((index) => {
+      const entry = finalists[index];
+      return `<article class="podium-${index + 1}"><span class="podium-rank-badge">${index + 1}</span><div class="podium-emblem" aria-hidden="true">${trophies[index]}</div><small class="podium-title">${titles[index]}</small><div class="podium-entrant">${entry.portrait || ""}${entry.playerId ? `<button data-player="${entry.playerId}">${h(entry.name)}</button>` : `<b>${h(entry.name)}</b>`}</div><strong class="podium-score">${entry.value}<small>${h(entry.unit)}</small></strong>${index === 0 ? '<span class="champion-ribbon">Tournament winner</span>' : ""}</article>`;
+    })
+    .join("")}</div></section>`;
+}
+
 function teamStandingsView() {
   const rows = teamStandings(
     state.teams || [],
@@ -1021,13 +1051,21 @@ function teamStandingsView() {
   );
   const final = state.tournament.finished;
   const podium = final
-    ? `<section class="final-banner"><span class="eyebrow">Official team results</span><h2>${h(state.tournament.name)}</h2><div class="podium">${rows
-        .slice(0, 3)
-        .map(
-          (entry, index) =>
-            `<article class="podium-${index + 1}"><span>${["♛", "♜", "♝"][index]}</span><small>${["Champion", "Runner-up", "Third place"][index]}</small><b>${h(entry.team.name)}</b><strong>${state.tournament.teamScoring === "board-points" ? `${entry.boardPoints.toFixed(1)} BP` : `${entry.matchPoints} MP`}</strong></article>`,
-        )
-        .join("")}</div></section>`
+    ? finalResultsBanner(
+        rows.slice(0, 3).map((entry) => ({
+          name: entry.team.name,
+          value:
+            state.tournament.teamScoring === "board-points"
+              ? entry.boardPoints.toFixed(1)
+              : String(entry.matchPoints),
+          unit:
+            state.tournament.teamScoring === "board-points"
+              ? "board points"
+              : "match points",
+          portrait: `<span class="podium-team-mark">${icon("shield", 18)}</span>`,
+        })),
+        true,
+      )
     : "";
   return `${podium}<div class="section-head"><div><span class="eyebrow">${final ? "Certified team results" : "Live team leaderboard"}</span><h2>${final ? "Final Rank" : "Team standings"}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}<button class="btn" data-action="projector">${icon("presentation")} Projector</button></div></div>${rows.length ? teamStandingsTable(rows) : empty("♜", "Standings await", "Register teams and complete matches to see rankings.", "Manage teams", "go-teams")}`;
 }
@@ -1037,13 +1075,15 @@ function standingsView() {
   const rows = standings(state.players, state.rounds);
   const final = state.tournament.finished;
   const podium = final
-    ? `<section class="final-banner"><span class="eyebrow">Official final results</span><h2>${h(state.tournament.name)}</h2><div class="podium">${rows
-        .slice(0, 3)
-        .map(
-          (entry, index) =>
-            `<article class="podium-${index + 1}"><span>${["♛", "♜", "♝"][index]}</span><small>${["Champion", "Runner-up", "Third place"][index]}</small><b>${h(entry.player.name)}</b><strong>${entry.points.toFixed(1)} pts</strong></article>`,
-        )
-        .join("")}</div></section>`
+    ? finalResultsBanner(
+        rows.slice(0, 3).map((entry) => ({
+          name: entry.player.name,
+          value: entry.points.toFixed(1),
+          unit: "points",
+          playerId: entry.player.id,
+          portrait: avatarMarkup(entry.player),
+        })),
+      )
     : "";
   return `${podium}<div class="section-head"><div><span class="eyebrow">${final ? "Certified results" : "Live leaderboard"}</span><h2>${final ? "Final Rank" : "Standings"}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}<button class="btn" data-action="projector">${icon("presentation")} Projector</button><button class="btn" data-export="pdf-standings">${icon("printer")} PDF</button></div></div>${rows.length ? standingsTable(rows, true) : empty("♛", "Standings await", "Add players and complete games to see live rankings.", "Manage players", "go-players")}`;
 }
