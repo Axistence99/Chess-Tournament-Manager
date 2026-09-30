@@ -23,6 +23,7 @@ test("round history, player profile, projector and tournament chooser are intera
   ).toBeVisible();
   await expect(page.locator(".archived-board")).toHaveCount(2);
   await expect(page.locator(".archived-result")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Round PGN" })).toHaveCount(0);
 
   await page.locator('.nav [data-view="players"]').click();
   await page
@@ -50,9 +51,33 @@ test("round history, player profile, projector and tournament chooser are intera
   ).toBeVisible();
 });
 
+test("help tab explains formats, pairings, scoring, and tie-breaks", async ({
+  page,
+}) => {
+  await page.locator('.nav [data-view="help"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Help & tournament guide" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Tournament formats" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Pairings & rounds" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Standings & tie-breaks" }),
+  ).toBeVisible();
+  await expect(page.locator("#help-tiebreaks")).toContainText("Buchholz");
+  await expect(page.locator("#help-tiebreaks")).toContainText(
+    "Sonneborn–Berger",
+  );
+  await expect(page.locator("#help-teams")).toContainText("3–1–0 match points");
+});
+
 test("appearance settings switch and persist all three themes", async ({
   page,
 }) => {
+  await page.locator('.nav [data-view="players"]').click();
   await page.getByRole("button", { name: /Appearance/ }).click();
   await expect(
     page.getByRole("heading", { name: "Choose a theme" }),
@@ -61,7 +86,7 @@ test("appearance settings switch and persist all three themes", async ({
   await page.getByRole("radio", { name: /Light/ }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator('.nav [data-view="dashboard"]')).toHaveClass(
+  await expect(page.locator('.nav [data-view="players"]')).toHaveClass(
     /active/,
   );
 
@@ -78,6 +103,40 @@ test("appearance settings switch and persist all three themes", async ({
   await expect(page.locator('.nav [data-view="dashboard"]')).toHaveClass(
     /active/,
   );
+});
+
+test("desktop navigation bars can be hidden and restored safely", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: /Appearance/ }).click();
+  const sidebarToggle = page.getByRole("switch", {
+    name: "Hide left navigation",
+  });
+  const topbarToggle = page.getByRole("switch", { name: "Hide top bar" });
+
+  await sidebarToggle.click();
+  await expect(page.locator(".app")).toHaveClass(/sidebar-hidden/);
+  await expect(page.locator(".sidebar")).toBeHidden();
+  await expect(sidebarToggle).toHaveAttribute("aria-checked", "true");
+
+  await topbarToggle.click();
+  await expect(page.locator(".app")).toHaveClass(/topbar-hidden/);
+  await expect(page.locator(".topbar")).toBeHidden();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+
+  await page.getByRole("button", { name: "Show left navigation" }).click();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await page.getByRole("button", { name: "Show top bar" }).click();
+  await expect(page.locator(".topbar")).toBeVisible();
+
+  await page.getByRole("button", { name: /Appearance/ }).click();
+  await page.getByRole("switch", { name: "Hide left navigation" }).click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.reload();
+  await expect(page.locator(".sidebar")).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Show left navigation" }),
+  ).toBeVisible();
 });
 
 test("CSV import and JSON restore persist new local records", async ({
