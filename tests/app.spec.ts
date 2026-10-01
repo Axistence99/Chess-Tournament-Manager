@@ -22,6 +22,7 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await page.fill('#creation-form [name="venue"]', "QA Hall");
   await page.fill('#creation-form [name="organizer"]', "QA Organizer");
   await page.fill('#creation-form [name="totalRounds"]', "1");
+  await page.selectOption('#creation-form [name="rated"]', "true");
   await page.click('#creation-form button[type="submit"]');
 
   await expect(page.getByText("Browser QA Open").first()).toBeVisible();
@@ -83,6 +84,24 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(page.locator(".podium-3")).toBeVisible();
   await expect(page.locator(".podium article").nth(1)).toHaveClass(/podium-1/);
   await expect(page.locator(".podium .avatar")).toHaveCount(0);
+  await expect(
+    page.locator(".ranking-table .rating-change.positive"),
+  ).not.toHaveCount(0);
+  await expect(
+    page.locator(".ranking-table .rating-change.negative"),
+  ).not.toHaveCount(0);
+  const ratedEvent = await page.evaluate(() => {
+    const library = JSON.parse(localStorage.getItem("castling.library.v2")!);
+    return library.tournaments[library.activeId].tournament;
+  });
+  expect(ratedEvent.rated).toBe(true);
+  expect(ratedEvent.ratingsApplied).toBe(true);
+  expect(
+    Object.values(ratedEvent.ratingChanges as Record<string, number>).reduce(
+      (sum, change) => sum + change,
+      0,
+    ),
+  ).toBe(0);
 
   await page.locator('.nav [data-view="dashboard"]').click();
   await expect(page.locator('[data-action="edit-tournament"]')).toBeDisabled();

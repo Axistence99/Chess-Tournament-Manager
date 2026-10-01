@@ -25,6 +25,14 @@ export interface Tournament {
   teamSize?: number;
   /** Configurable team standings system selected during tournament creation. */
   teamScoring?: TeamScoring;
+  /** Rated events apply standard Elo changes when final results are published. */
+  rated?: boolean;
+  /** Prevent rating changes from being applied more than once. */
+  ratingsApplied?: boolean;
+  /** Ratings frozen when the first round is created for reproducible Elo math. */
+  startingRatings?: Record<string, number>;
+  /** Final per-player Elo changes, retained for reports and restored backups. */
+  ratingChanges?: Record<string, number>;
   createdAt: string;
   finished: boolean;
 }

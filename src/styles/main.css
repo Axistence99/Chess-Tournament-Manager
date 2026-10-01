@@ -931,6 +931,16 @@ tbody tr:hover {
 .ranking-table .score {
   color: #9ad7b7;
 }
+.rating-change {
+  font-weight: 850;
+  white-space: nowrap;
+}
+.rating-change.positive {
+  color: #63d99a;
+}
+.rating-change.negative {
+  color: #e28272;
+}
 .rank {
   font-weight: 800;
 }

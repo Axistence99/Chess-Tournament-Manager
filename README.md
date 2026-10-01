@@ -12,6 +12,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Adaptive visual knockout trees: compact one-sided brackets for small fields and mirrored brackets for larger events
 - Automatic first-round creation, instant result entry, and organizer confirmation before each subsequent round
 - Live standings with Buchholz, Buchholz Cut 1, Sonneborn–Berger, wins, and color counts
+- Rated or unrated tournament selection, with zero-sum Elo updates (K=20) applied once when final rankings are published
 - Reusable player-profile directory with starter profiles, compressed photos, flagged federation selection, CSV import/export, and per-tournament registration
 - PGN, PDF, PNG/JPG, and complete ZIP package export in the browser
 - Projector mode, keyboard navigation, responsive mobile layout, and accessible focus states

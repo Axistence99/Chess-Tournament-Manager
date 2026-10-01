@@ -419,7 +419,7 @@ test("team tournament groups boards and applies the selected team scoring", asyn
   ).toContainText("3");
 });
 
-test("team formats, team size, and scoring are available during creation", async ({
+test("team formats, rating status, team size, and scoring are available during creation", async ({
   page,
 }) => {
   await page.locator('[data-action="choose-tournament"]').click();
@@ -435,6 +435,13 @@ test("team formats, team size, and scoring are available during creation", async
       .locator("#tournament-type")
       .getByRole("option", { name: "Team Round Robin" }),
   ).toHaveCount(1);
+  await expect(page.locator('[name="rated"] option')).toHaveText([
+    "Unrated",
+    "Rated · Elo",
+  ]);
+  await expect(page.locator('[name="rated"]')).toHaveValue("false");
+  await page.locator('[name="rated"]').selectOption("true");
+  await expect(page.locator('[name="rated"]')).toHaveValue("true");
   await page.locator("#tournament-type").selectOption("Team Round Robin");
   await expect(page.locator('[name="teamSize"]')).toBeVisible();
   await expect(page.locator('[name="teamScoring"] option')).toHaveCount(3);

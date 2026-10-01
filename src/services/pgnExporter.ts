@@ -31,8 +31,14 @@ export function pgn(state: AppState, roundNumber?: number) {
             ["White", w.name],
             ["Black", b.name],
             ["Result", res(g.result)],
-            ["WhiteElo", String(w.rating)],
-            ["BlackElo", String(b.rating)],
+            [
+              "WhiteElo",
+              String(state.tournament.startingRatings?.[w.id] ?? w.rating),
+            ],
+            [
+              "BlackElo",
+              String(state.tournament.startingRatings?.[b.id] ?? b.rating),
+            ],
             ["TimeControl", state.tournament.timeControl],
           ];
           return (
