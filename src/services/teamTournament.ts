@@ -23,7 +23,29 @@ export interface TeamStanding {
 const uid = () => crypto.randomUUID();
 
 function scoringWin(system: TeamScoring): number {
+  if (system === "bughouse") return 1;
   return system === "3-1-0" ? 3 : 2;
+}
+
+function winningTeamId(game: Pairing): string | null {
+  if (game.result === "1-0" || game.result === "1F-0F")
+    return game.whiteTeamId || null;
+  if (game.result === "0-1" || game.result === "0F-1F")
+    return game.blackTeamId || null;
+  return null;
+}
+
+/** Resolve the persisted first Bughouse win, with a legacy-data fallback. */
+function bughouseWinner(boards: Pairing[]): string | null {
+  const persisted = boards.find(
+    (game) => game.bughouseWinnerTeamId,
+  )?.bughouseWinnerTeamId;
+  if (persisted) return persisted;
+  for (const game of boards) {
+    const winner = winningTeamId(game);
+    if (winner) return winner;
+  }
+  return null;
 }
 
 /** Group all individual boards belonging to the same team match. */
@@ -76,7 +98,11 @@ export function teamStandings(
   );
 
   for (const boards of teamMatches(rounds)) {
-    if (!boards.every((game) => game.result !== null)) continue;
+    const allBoardsComplete = boards.every((game) => game.result !== null);
+    const firstBughouseWinner =
+      scoring === "bughouse" ? bughouseWinner(boards) : null;
+    // Bughouse is complete as soon as its first decisive board is recorded.
+    if (!allBoardsComplete && !firstBughouseWinner) continue;
     const teamIds = new Set<string>();
     for (const board of boards) {
       if (board.whiteTeamId) teamIds.add(board.whiteTeamId);
@@ -107,7 +133,13 @@ export function teamStandings(
     opponents.get(firstId)?.push(secondId);
     opponents.get(secondId)?.push(firstId);
 
-    if (firstBoards > secondBoards) {
+    if (scoring === "bughouse" && firstBughouseWinner) {
+      const winner = firstBughouseWinner === firstId ? first : second;
+      const loser = firstBughouseWinner === firstId ? second : first;
+      winner.wins++;
+      winner.matchPoints++;
+      loser.losses++;
+    } else if (firstBoards > secondBoards) {
       first.wins++;
       second.losses++;
       if (scoring !== "board-points") first.matchPoints += scoringWin(scoring);
@@ -119,8 +151,9 @@ export function teamStandings(
       first.draws++;
       second.draws++;
       if (scoring !== "board-points") {
-        first.matchPoints++;
-        second.matchPoints++;
+        const drawPoints = scoring === "bughouse" ? 0.5 : 1;
+        first.matchPoints += drawPoints;
+        second.matchPoints += drawPoints;
       }
     }
   }
@@ -208,7 +241,8 @@ export function generateTeamRound(
   teams: Team[],
   rounds: Round[],
 ): Pairing[] {
-  const size = tournament.teamSize || 1;
+  const size =
+    tournament.teamScoring === "bughouse" ? 2 : tournament.teamSize || 1;
   const active = teams.filter(
     (team) => team.active && team.playerIds.length === size,
   );

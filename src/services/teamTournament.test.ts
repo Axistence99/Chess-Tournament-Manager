@@ -159,4 +159,62 @@ describe("team scoring", () => {
     expect(standings[0].boardPoints).toBeGreaterThan(0);
     expect(standings.every((entry) => entry.matchPoints === 0)).toBe(true);
   });
+
+  it("awards one Bughouse point as soon as the first teammate wins", () => {
+    const pairings = generateTeamRound(
+      { ...tournament("Team Swiss"), teamScoring: "bughouse" },
+      players,
+      teams.slice(0, 2),
+      [],
+    );
+    const deciding = pairings[0];
+    const winnerId = deciding.whiteTeamId!;
+    for (const game of pairings) {
+      game.bughouseWinnerTeamId = winnerId;
+      game.bughouseDecidingGameId = deciding.id;
+    }
+    deciding.result = "1-0";
+    const standings = teamStandings(
+      teams.slice(0, 2),
+      [
+        {
+          number: 1,
+          pairings,
+          locked: true,
+          completed: true,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      "bughouse",
+    );
+    expect(standings[0].team.id).toBe(winnerId);
+    expect(standings[0].matchPoints).toBe(1);
+    expect(standings[0].wins).toBe(1);
+    expect(standings[1].matchPoints).toBe(0);
+    expect(pairings[1].result).toBeNull();
+  });
+
+  it("awards half a Bughouse point when both linked boards draw", () => {
+    const pairings = generateTeamRound(
+      { ...tournament("Team Swiss"), teamScoring: "bughouse" },
+      players,
+      teams.slice(0, 2),
+      [],
+    ).map((game) => ({ ...game, result: "½-½" as const }));
+    const standings = teamStandings(
+      teams.slice(0, 2),
+      [
+        {
+          number: 1,
+          pairings,
+          locked: true,
+          completed: true,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      "bughouse",
+    );
+    expect(standings.every((entry) => entry.matchPoints === 0.5)).toBe(true);
+    expect(standings.every((entry) => entry.draws === 1)).toBe(true);
+  });
 });

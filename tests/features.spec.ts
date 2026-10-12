@@ -354,14 +354,12 @@ test("round robin format renders a responsive crosstable", async ({ page }) => {
   await page.keyboard.press("Escape");
 });
 
-test("team tournament groups boards and applies the selected team scoring", async ({
-  page,
-}) => {
+test("Bughouse team match ends on the first teammate win", async ({ page }) => {
   const teamEvent = structuredClone(completedTournament);
   teamEvent.tournament.name = "Team Round Robin QA";
   teamEvent.tournament.type = "Team Round Robin";
   teamEvent.tournament.teamSize = 2;
-  teamEvent.tournament.teamScoring = "3-1-0";
+  teamEvent.tournament.teamScoring = "bughouse";
   teamEvent.tournament.totalRounds = 99;
   teamEvent.tournament.finished = false;
   teamEvent.rounds = [];
@@ -406,7 +404,10 @@ test("team tournament groups boards and applies the selected team scoring", asyn
   await expect(page.locator(".team-match-card")).toHaveCount(1);
   await expect(page.locator(".team-match-card .board-card")).toHaveCount(2);
   await page.locator('.board-card [data-result="1-0"]').first().click();
-  await page.locator('.board-card [data-result="0-1"]').last().click();
+  await expect(page.getByText("Stopped · teammate won")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "End tournament" }),
+  ).toBeVisible();
   await page.locator('.nav [data-view="standings"]').click();
   await expect(
     page.getByRole("heading", { name: "Team standings" }),
@@ -415,8 +416,11 @@ test("team tournament groups boards and applies the selected team scoring", asyn
     page.locator(".content .team-ranking-table tbody tr"),
   ).toHaveCount(2);
   await expect(
-    page.locator(".content .team-ranking-table tbody tr").first(),
-  ).toContainText("3");
+    page
+      .locator(".content .team-ranking-table tbody tr")
+      .first()
+      .locator("td.score"),
+  ).toHaveText(["1", "1.0"]);
 });
 
 test("team formats, rating status, team size, and scoring are available during creation", async ({
@@ -444,7 +448,16 @@ test("team formats, rating status, team size, and scoring are available during c
   await expect(page.locator('[name="rated"]')).toHaveValue("true");
   await page.locator("#tournament-type").selectOption("Team Round Robin");
   await expect(page.locator('[name="teamSize"]')).toBeVisible();
-  await expect(page.locator('[name="teamScoring"] option')).toHaveCount(3);
+  await expect(page.locator('[name="teamScoring"] option')).toHaveCount(4);
+  await expect(
+    page.locator('[name="teamScoring"] option[value="bughouse"]'),
+  ).toHaveText("Bughouse · first win");
+  await page.locator('[name="teamScoring"]').selectOption("bughouse");
+  await expect(page.locator('[name="teamSize"]')).toHaveValue("2");
+  await expect(page.locator('[name="teamSize"]')).toHaveAttribute(
+    "readonly",
+    "",
+  );
   await expect(page.locator("#round-count-output")).toContainText(
     "at least 2 teams",
   );

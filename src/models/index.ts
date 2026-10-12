@@ -5,7 +5,7 @@ export type TournamentType =
   | "Knockout"
   | "Team Swiss"
   | "Team Round Robin";
-export type TeamScoring = "2-1-0" | "3-1-0" | "board-points";
+export type TeamScoring = "2-1-0" | "3-1-0" | "board-points" | "bughouse";
 export type GameResult =
   "1-0" | "½-½" | "0-1" | "1F-0F" | "0F-1F" | "BYE" | null;
 export interface Tournament {
@@ -68,6 +68,10 @@ export interface Pairing {
   teamMatchId?: string;
   whiteTeamId?: string;
   blackTeamId?: string | null;
+  /** First decisive Bughouse result fixes the team-match winner. */
+  bughouseWinnerTeamId?: string;
+  /** Board whose result first decided the Bughouse team match. */
+  bughouseDecidingGameId?: string;
 }
 export interface Round {
   number: number;

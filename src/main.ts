@@ -196,6 +196,7 @@ let state = storage.load() || emptyState();
 state.teams ||= [];
 state.tournament.teamSize ||= 4;
 state.tournament.teamScoring ||= "2-1-0";
+if (state.tournament.teamScoring === "bughouse") state.tournament.teamSize = 2;
 state.tournament.rated ??= false;
 let draftingNewTournament = false;
 let modal = "";
@@ -215,11 +216,24 @@ const player = (id: string | null) =>
   state.players.find((profile) => profile.id === id) ||
   storage.listPlayers().find((profile) => profile.id === id);
 const currentRound = () => state.rounds.at(-1);
+const isBughouse = () => state.tournament.teamScoring === "bughouse";
+const bughouseDecision = (round: Round, teamMatchId?: string) =>
+  isBughouse() && teamMatchId
+    ? round.pairings.find(
+        (game) => game.teamMatchId === teamMatchId && game.bughouseWinnerTeamId,
+      )
+    : undefined;
+const gameCountsComplete = (round: Round, game: Round["pairings"][number]) =>
+  game.result !== null || Boolean(bughouseDecision(round, game.teamMatchId));
 const isComplete = (r?: Round) =>
-  !!r && r.pairings.every((g) => g.result !== null);
+  !!r && r.pairings.every((game) => gameCountsComplete(r, game));
 const gamesDone = () =>
-  state.rounds.flatMap((r) => r.pairings).filter((g) => g.result !== null)
-    .length;
+  state.rounds.reduce(
+    (count, round) =>
+      count +
+      round.pairings.filter((game) => gameCountsComplete(round, game)).length,
+    0,
+  );
 const gamesTotal = () =>
   state.rounds.reduce((n, r) => n + r.pairings.length, 0);
 const tournamentStarted = () => state.rounds.length > 0;
@@ -457,7 +471,7 @@ function helpView(): string {
   <section id="help-pairings" class="help-section"><div class="help-section-title"><span>${icon("swords", 20)}</span><div><span class="eyebrow">How opponents are chosen</span><h3>Pairings & rounds</h3></div></div><div class="help-definition-list"><div><b>Swiss ordering</b><p>Entrants are ordered by current points, then rating. The pairing engine prefers close scores, strongly avoids repeat opponents, and balances White and Black assignments.</p></div><div><b>Swiss bye</b><p>When the field is odd, the lowest eligible player who has not already received a bye is selected where possible. A bye scores one point.</p></div><div><b>Round Robin rotation</b><p>A fixed circle rotation generates every unique opponent combination. Colors alternate through the schedule; self-pairings are impossible.</p></div><div><b>Knockout seeding</b><p>The bracket expands to the next power of two. Players are seeded by rating, with names resolving equal ratings. Draws are unavailable because each match needs a winner.</p></div><div><b>Organizer confirmation</b><p>Completing all results does not immediately advance the event. Use the continue action to review and confirm creation of the next round.</p></div><div><b>Roster changes</b><p>An untouched Round Robin opener is rebuilt when the roster changes. Once results are recorded, registration locks to protect the schedule and standings.</p></div></div></section>
   <section id="help-results" class="help-section"><div class="help-section-title"><span>${icon("check-circle-2", 20)}</span><div><span class="eyebrow">Scoring games</span><h3>Results & notation</h3></div></div><div class="help-score-grid"><div><b>1–0</b><span>White wins</span></div><div><b>½–½</b><span>Draw</span></div><div><b>0–1</b><span>Black wins</span></div><div><b>BYE</b><span>One-point unpaired round</span></div></div><p class="help-note">Individual scoring awards 1 point for a win or bye, ½ point for a draw, and 0 for a loss. Select a different result to correct an entry before advancing. Every completed round remains available in the Rounds tab.</p></section>
   <section id="help-tiebreaks" class="help-section"><div class="help-section-title"><span>${icon("scale", 20)}</span><div><span class="eyebrow">Ranking order</span><h3>Standings & tie-breaks</h3></div></div><p>Individual players are sorted using the following order. The first value that differs decides the higher rank.</p><ol class="help-ranking"><li><span>1</span><div><b>Points</b><p>Total game points earned.</p></div></li><li><span>2</span><div><b>Buchholz</b><p>The sum of all opponents’ final or current point totals. A player who faced stronger-scoring opposition receives the higher value.</p></div></li><li><span>3</span><div><b>Sonneborn–Berger</b><p>The full score of every defeated opponent plus half the score of every drawn opponent.</p></div></li><li><span>4</span><div><b>Wins</b><p>The player with more victories ranks higher.</p></div></li><li><span>5</span><div><b>Rating</b><p>Rating resolves a tie that remains after all competition tie-breaks.</p></div></li></ol><aside class="help-callout rating-formula"><b>Rated tournament Elo</b><p>For each rated game, expected score is E = 1 ÷ (1 + 10<sup>(opponent rating − player rating) ÷ 400</sup>). The change is ΔR = round(${DEFAULT_K_FACTOR} × (actual score − E)). Game changes are zero-sum: points gained by one player are deducted from the opponent. Final changes apply only when the organizer publishes the final ranking; byes, forfeits, and games involving a zero-rated player are excluded.</p></aside><aside class="help-callout"><b>Buchholz Cut 1</b><p>The standings report also displays Buchholz with the lowest opponent score removed. It is an informational field and is not currently used in the automatic ranking order.</p></aside></section>
-  <section id="help-teams" class="help-section"><div class="help-section-title"><span>${icon("users", 20)}</span><div><span class="eyebrow">Boards become matches</span><h3>Team tournaments</h3></div></div><div class="help-card-grid help-team-grid"><article class="help-card"><h4>2–1–0 match points</h4><p>A team earns 2 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>3–1–0 match points</h4><p>A team earns 3 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>Board points only</h4><p>Teams rank directly by the total points scored across their individual boards.</p></article></div><p>With match-point scoring, teams rank by <b>match points</b>, then <b>board points</b>, then <b>team Buchholz</b>, then team name. With board-points-only scoring, board points are primary. Team Buchholz sums the primary scores of all opposing teams.</p></section>
+  <section id="help-teams" class="help-section"><div class="help-section-title"><span>${icon("users", 20)}</span><div><span class="eyebrow">Boards become matches</span><h3>Team tournaments</h3></div></div><div class="help-card-grid help-team-grid"><article class="help-card"><h4>2–1–0 match points</h4><p>A team earns 2 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>3–1–0 match points</h4><p>A team earns 3 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>Board points only</h4><p>Teams rank directly by the total points scored across their individual boards.</p></article><article class="help-card"><h4>Bughouse · first win</h4><p>Teams have exactly two players on linked boards. The first teammate to win immediately ends the match and earns 1 team match point; the other board is stopped. If both boards draw, each team earns ½ point.</p></article></div><p>With match-point scoring, teams rank by <b>match points</b>, then <b>board points</b>, then <b>team Buchholz</b>, then team name. With board-points-only scoring, board points are primary. Team Buchholz sums the primary scores of all opposing teams.</p></section>
   <section id="help-shortcuts" class="help-section"><div class="help-section-title"><span>${icon("keyboard", 20)}</span><div><span class="eyebrow">Faster controls</span><h3>Keyboard shortcuts</h3></div></div><p>Use these shortcuts with a desktop or external keyboard. On macOS, use Command instead of Control.</p><div class="shortcut-list"><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>P</kbd></span><b>Toggle Projector mode</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>L</kbd></span><b>Show or hide left navigation</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>T</kbd></span><b>Show or hide the top bar</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>H</kbd></span><b>Open Help</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>D</kbd></span><b>Open Dashboard</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>A</kbd></span><b>Open Appearance & layout</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>N</kbd></span><b>Create a player profile</b></div><div><span><kbd>Esc</kbd></span><b>Close a dialog or Projector mode</b></div></div><aside class="help-callout"><b>Navigation safety</b><p>The left and top bars can always be restored with the same shortcut, even when their floating restore controls are hidden or out of view.</p></aside></section>
   <section id="help-tools" class="help-section"><div class="help-section-title"><span>${icon("wrench", 20)}</span><div><span class="eyebrow">Presentation & safekeeping</span><h3>Tools, exports & local data</h3></div></div><div class="help-definition-list"><div><b>Projector mode</b><p>Cycles through standings, competition details, and the tournament overview. Round Robin events show their crosstable; Knockout events show the bracket. Previous and Next controls are also available.</p></div><div><b>Player results</b><p>Select a player name in standings or results to open their complete round-by-round tournament record.</p></div><div><b>Exports</b><p>Download PGN, PDF reports, CSV data, images, JSON backups, or a ZIP tournament package from the top toolbar.</p></div><div><b>Backup and restore</b><p>JSON backups preserve tournament data and can be imported later or moved to another browser.</p></div><div><b>Local autosave</b><p>Every action is saved in this browser using local storage. No account or internet connection is required after the app is cached.</p></div><div><b>Multiple tournaments</b><p>Use the tournament switcher in the top bar to create, open, or remove locally stored events.</p></div></div><aside class="help-callout warning"><b>Protect your records</b><p>Browser data can be cleared by device cleanup or privacy settings. Export a JSON backup regularly, especially before removing a tournament.</p></aside></section>
 </div></div></section>`;
@@ -488,7 +502,8 @@ function roundCountField(tournament: Tournament): string {
 
 function teamSettingsFields(tournament: Tournament): string {
   const visible = isTeamTournament(tournament.type);
-  return `<div id="team-settings-fields" class="team-settings-fields full-field" ${visible ? "" : "hidden"}><div class="field"><label>Players per team *</label><input name="teamSize" type="number" min="1" max="20" required value="${tournament.teamSize || 4}"><small>Each team must select exactly this many players.</small></div><div class="field"><label>Team scoring system *</label><select name="teamScoring"><option value="2-1-0" ${tournament.teamScoring === "2-1-0" ? "selected" : ""}>2–1–0 match points</option><option value="3-1-0" ${tournament.teamScoring === "3-1-0" ? "selected" : ""}>3–1–0 match points</option><option value="board-points" ${tournament.teamScoring === "board-points" ? "selected" : ""}>Board points only</option></select><small>Board points remain available as a tie-break for match-point systems.</small></div></div>`;
+  const bughouse = tournament.teamScoring === "bughouse";
+  return `<div id="team-settings-fields" class="team-settings-fields full-field" ${visible ? "" : "hidden"}><div class="field"><label>Players per team *</label><input id="team-size-input" name="teamSize" type="number" min="1" max="20" required value="${bughouse ? 2 : tournament.teamSize || 4}" ${bughouse ? "readonly" : ""}><small id="team-size-help">${bughouse ? "Bughouse uses exactly two players and two linked boards per team." : "Each team must select exactly this many players."}</small></div><div class="field"><label>Team scoring system *</label><select name="teamScoring"><option value="2-1-0" ${tournament.teamScoring === "2-1-0" ? "selected" : ""}>2–1–0 match points</option><option value="3-1-0" ${tournament.teamScoring === "3-1-0" ? "selected" : ""}>3–1–0 match points</option><option value="board-points" ${tournament.teamScoring === "board-points" ? "selected" : ""}>Board points only</option><option value="bughouse" ${bughouse ? "selected" : ""}>Bughouse · first win</option></select><small>In Bughouse, the first teammate to win immediately earns 1 match point for their team.</small></div></div>`;
 }
 
 function ratingStatusField(tournament: Tournament): string {
@@ -498,6 +513,19 @@ function ratingStatusField(tournament: Tournament): string {
 function updateTeamSettingsVisibility(type: Tournament["type"]): void {
   const fields = document.querySelector<HTMLElement>("#team-settings-fields");
   if (fields) fields.hidden = !isTeamTournament(type);
+}
+
+/** Bughouse always consists of two teammates playing two linked boards. */
+function updateTeamScoringControls(scoring: TeamScoring): void {
+  const size = document.querySelector<HTMLInputElement>("#team-size-input");
+  const help = document.querySelector<HTMLElement>("#team-size-help");
+  if (!size || !help) return;
+  const bughouse = scoring === "bughouse";
+  if (bughouse) size.value = "2";
+  size.readOnly = bughouse;
+  help.textContent = bughouse
+    ? "Bughouse uses exactly two players and two linked boards per team."
+    : "Each team must select exactly this many players.";
 }
 
 /** Update the round field immediately when the tournament format changes. */
@@ -988,7 +1016,9 @@ function pairingsView() {
       : "Pairings";
   const resultHelp = knockout
     ? "Results save instantly. Knockout games require a decisive result. Review every result before confirming the next stage."
-    : "Results save instantly. When every board is complete, review the results and confirm before creating the next round.";
+    : isBughouse()
+      ? "Results save instantly. The first teammate win decides the Bughouse match for 1 team point and stops the linked board. Two draws award ½ point to each team."
+      : "Results save instantly. When every board is complete, review the results and confirm before creating the next round.";
   const canAdvance =
     Boolean(r && isComplete(r)) &&
     state.rounds.length < state.tournament.totalRounds &&
@@ -1023,7 +1053,17 @@ function board(g: Round["pairings"][number], r: Round) {
       : ([["½-½", "½–½"]] as [NonNullable<GameResult>, string][])),
     ["0-1", "0–1"],
   ];
-  return `<div class="board-card"><span class="board-no">B${g.board}</span><div class="player-side"><span class="piece white">♔</span><span><b>${h(w?.name)}</b><small class="muted" style="display:block">${w?.rating}</small></span></div><div class="result-buttons" aria-label="Result for board ${g.board}">${choices.map(([v, l]) => `<button data-result="${v}" data-game="${g.id}" ${!r.locked || state.tournament.finished ? "disabled" : ""} class="${g.result === v ? "selected" : ""}" title="${v}">${l}</button>`).join("")}</div><div class="player-side" style="justify-content:flex-end;text-align:right"><span><b>${h(b.name)}</b><small class="muted" style="display:block">${b.rating}</small></span><span class="piece black">♚</span></div></div>`;
+  const decision = bughouseDecision(r, g.teamMatchId);
+  const stopped = decision && decision.bughouseDecidingGameId !== g.id;
+  const controls = stopped
+    ? `<button class="selected" disabled>Stopped · teammate won</button>`
+    : choices
+        .map(
+          ([v, l]) =>
+            `<button data-result="${v}" data-game="${g.id}" ${!r.locked || state.tournament.finished ? "disabled" : ""} class="${g.result === v ? "selected" : ""}" title="${v}">${l}</button>`,
+        )
+        .join("");
+  return `<div class="board-card ${stopped ? "bughouse-stopped" : ""}"><span class="board-no">B${g.board}</span><div class="player-side"><span class="piece white">♔</span><span><b>${h(w?.name)}</b><small class="muted" style="display:block">${w?.rating}</small></span></div><div class="result-buttons" aria-label="Result for board ${g.board}">${controls}</div><div class="player-side" style="justify-content:flex-end;text-align:right"><span><b>${h(b.name)}</b><small class="muted" style="display:block">${b.rating}</small></span><span class="piece black">♚</span></div></div>`;
 }
 function federationCode(country: string): string {
   const value = country.trim();
@@ -1194,7 +1234,8 @@ function resultNotation(result: GameResult): string {
 function archivedBoard(game: Round["pairings"][number]): string {
   const white = player(game.whiteId);
   const black = player(game.blackId);
-  return `<article class="archived-board ${game.result ? "complete" : "pending"}"><span class="board-no">Board ${game.board}</span><div class="archived-player"><span class="piece white">♔</span><span><b>${h(white?.name || "Unknown")}</b><small>${white?.rating || "—"}</small></span></div><strong class="archived-result">${h(resultNotation(game.result))}</strong><div class="archived-player black-side">${black ? `<span><b>${h(black.name)}</b><small>${black.rating}</small></span><span class="piece black">♚</span>` : `<span><b>Bye</b><small>No opponent</small></span>`}</div></article>`;
+  const stopped = !game.result && game.bughouseWinnerTeamId;
+  return `<article class="archived-board ${game.result || stopped ? "complete" : "pending"}"><span class="board-no">Board ${game.board}</span><div class="archived-player"><span class="piece white">♔</span><span><b>${h(white?.name || "Unknown")}</b><small>${white?.rating || "—"}</small></span></div><strong class="archived-result">${stopped ? "Stopped" : h(resultNotation(game.result))}</strong><div class="archived-player black-side">${black ? `<span><b>${h(black.name)}</b><small>${black.rating}</small></span><span class="piece black">♚</span>` : `<span><b>Bye</b><small>No opponent</small></span>`}</div></article>`;
 }
 
 function archivedRoundBoards(round: Round): string {
@@ -1226,7 +1267,7 @@ function historyView() {
   const n = selectedRound || currentRound()?.number;
   const r = state.rounds.find((x) => x.number === n);
   const completed =
-    r?.pairings.filter((game) => game.result !== null).length || 0;
+    r?.pairings.filter((game) => gameCountsComplete(r, game)).length || 0;
   const decisive =
     r?.pairings.filter(
       (game) => game.result && !["½-½", "BYE"].includes(game.result),
@@ -1817,7 +1858,13 @@ function submitTournament(form: HTMLFormElement) {
   const type = String(f.get("type")) as Tournament["type"];
   const playerCount = state.players.filter((profile) => profile.active).length;
   const teamCount = (state.teams || []).filter((team) => team.active).length;
-  const teamSize = Number(f.get("teamSize") || state.tournament.teamSize || 4);
+  const teamScoring = String(
+    f.get("teamScoring") || state.tournament.teamScoring || "2-1-0",
+  ) as TeamScoring;
+  const teamSize =
+    teamScoring === "bughouse"
+      ? 2
+      : Number(f.get("teamSize") || state.tournament.teamSize || 4);
   const swiss = type === "Swiss System" || type === "Team Swiss";
   const entrantCount = isTeamTournament(type) ? teamCount : playerCount;
   const noRepeatMaximum = roundRobinRoundCount(entrantCount);
@@ -1845,9 +1892,7 @@ function submitTournament(form: HTMLFormElement) {
       ? roundCountEdited || state.tournament.swissRoundsManual === true
       : undefined,
     teamSize,
-    teamScoring: String(
-      f.get("teamScoring") || state.tournament.teamScoring || "2-1-0",
-    ) as TeamScoring,
+    teamScoring,
     rated: String(f.get("rated")) === "true",
     ratingsApplied: false,
     startingRatings: undefined,
@@ -2102,6 +2147,27 @@ app.addEventListener("click", (e) => {
       }
       optimisticUpdate(() => {
         g.result = result;
+        if (isBughouse() && g.teamMatchId) {
+          const match = r.pairings.filter(
+            (game) => game.teamMatchId === g.teamMatchId,
+          );
+          // Corrections to the deciding board replace or clear the decision.
+          for (const board of match) {
+            board.bughouseWinnerTeamId = undefined;
+            board.bughouseDecidingGameId = undefined;
+          }
+          const winnerTeamId =
+            result === "1-0" || result === "1F-0F"
+              ? g.whiteTeamId
+              : result === "0-1" || result === "0F-1F"
+                ? g.blackTeamId
+                : null;
+          if (winnerTeamId)
+            for (const board of match) {
+              board.bughouseWinnerTeamId = winnerTeamId;
+              board.bughouseDecidingGameId = g.id;
+            }
+        }
         r.completed = isComplete(r);
       });
     }
@@ -2326,6 +2392,8 @@ app.addEventListener("change", (e) => {
   const t = e.target as HTMLInputElement;
   if (t.id === "tournament-type")
     updateRoundCountControls(t.value as Tournament["type"]);
+  if (t.name === "teamScoring")
+    updateTeamScoringControls(t.value as TeamScoring);
   if (t.name === "playerIds" && t.type === "checkbox") {
     const selected = document.querySelectorAll<HTMLInputElement>(
       '#team-form [name="playerIds"]:checked',
