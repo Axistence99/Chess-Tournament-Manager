@@ -54,6 +54,8 @@ export interface Team {
   id: string;
   name: string;
   playerIds: string[];
+  /** Reusable emoji identity displayed throughout team tournaments. */
+  emoji?: string;
   /** Inactive teams remain editable but are excluded from pairings. */
   active: boolean;
 }

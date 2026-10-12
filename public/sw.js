@@ -1,5 +1,5 @@
 /** Offline service worker using network-first HTML and cache-first static assets. */
-const CACHE = "chest-tournament-v71";
+const CACHE = "chest-tournament-v73";
 const SHELL = [
   "./",
   "./index.html",

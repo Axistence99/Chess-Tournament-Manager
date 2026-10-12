@@ -52,6 +52,130 @@ import {
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const uid = () => crypto.randomUUID();
+
+const TEAM_EMOJI_CATEGORIES = [
+  {
+    id: "smileys",
+    icon: "😀",
+    label: "Smileys",
+    emojis: [
+      ["😀", "grinning happy"],
+      ["😎", "cool sunglasses"],
+      ["🥳", "party"],
+      ["🤩", "star eyes"],
+      ["😈", "devil"],
+      ["👻", "ghost"],
+      ["🤖", "robot"],
+      ["🥶", "cold"],
+      ["🤠", "cowboy"],
+      ["🫡", "salute"],
+      ["🤓", "nerd"],
+      ["😤", "determined"],
+    ],
+  },
+  {
+    id: "animals",
+    icon: "🐺",
+    label: "Animals",
+    emojis: [
+      ["🐺", "wolf"],
+      ["🦁", "lion"],
+      ["🐯", "tiger"],
+      ["🐉", "dragon"],
+      ["🦅", "eagle"],
+      ["🦈", "shark"],
+      ["🐍", "snake"],
+      ["🦊", "fox"],
+      ["🐻", "bear"],
+      ["🦄", "unicorn"],
+      ["🐙", "octopus"],
+      ["🦍", "gorilla"],
+    ],
+  },
+  {
+    id: "chess",
+    icon: "♞",
+    label: "Chess & fantasy",
+    emojis: [
+      ["♔", "white king chess"],
+      ["♕", "white queen chess"],
+      ["♖", "white rook chess"],
+      ["♗", "white bishop chess"],
+      ["♘", "white knight chess"],
+      ["♙", "white pawn chess"],
+      ["♚", "black king chess"],
+      ["♛", "black queen chess"],
+      ["♜", "black rook chess"],
+      ["♝", "black bishop chess"],
+      ["♞", "black knight chess"],
+      ["♟", "black pawn chess"],
+      ["🧙", "wizard"],
+      ["🧚", "fairy"],
+      ["🥷", "ninja"],
+    ],
+  },
+  {
+    id: "sports",
+    icon: "🏆",
+    label: "Sports",
+    emojis: [
+      ["🏆", "trophy champion"],
+      ["🥇", "gold medal"],
+      ["⚽", "football soccer"],
+      ["🏀", "basketball"],
+      ["🏈", "american football"],
+      ["⚾", "baseball"],
+      ["🎾", "tennis"],
+      ["🏐", "volleyball"],
+      ["🎯", "target"],
+      ["🥊", "boxing glove"],
+      ["🏹", "archery bow"],
+      ["🏎️", "race car"],
+    ],
+  },
+  {
+    id: "objects",
+    icon: "💡",
+    label: "Objects",
+    emojis: [
+      ["🛡️", "shield defense"],
+      ["⚔️", "crossed swords battle"],
+      ["🔥", "fire flame"],
+      ["⚡", "lightning bolt"],
+      ["💎", "diamond"],
+      ["🚀", "rocket"],
+      ["👑", "crown"],
+      ["🗿", "stone statue"],
+      ["💡", "light bulb idea"],
+      ["🔔", "bell"],
+      ["🧲", "magnet"],
+      ["🗝️", "key"],
+    ],
+  },
+  {
+    id: "symbols",
+    icon: "✨",
+    label: "Symbols",
+    emojis: [
+      ["⭐", "star"],
+      ["🌟", "glowing star"],
+      ["✨", "sparkles"],
+      ["💥", "collision"],
+      ["☯️", "yin yang"],
+      ["☮️", "peace"],
+      ["❤️", "red heart"],
+      ["💚", "green heart"],
+      ["💙", "blue heart"],
+      ["🖤", "black heart"],
+      ["❄️", "snowflake"],
+      ["🌈", "rainbow"],
+    ],
+  },
+] as const;
+
+const teamEmoji = (team?: Team): string => team?.emoji || "🛡️";
+const teamMark = (team?: Team, className = "team-mark"): string =>
+  `<span class="${className}" role="img" aria-label="${h(team?.name || "Team")} icon">${h(teamEmoji(team))}</span>`;
 const today = new Date().toISOString().slice(0, 10);
 const emptyState = (): AppState => ({
   tournament: {
@@ -467,7 +591,7 @@ function helpView(): string {
   ];
   return `<section class="help-page"><header class="help-hero"><div><span class="eyebrow">Organizer handbook</span><h2>Help & tournament guide</h2><p>Learn the complete workflow, how each pairing system works, and how rankings are calculated.</p></div><span class="help-hero-mark" aria-hidden="true">${icon("book-open", 38)}</span></header><div class="help-layout"><nav class="help-toc" aria-label="Help topics"><strong>On this page</strong>${topics.map(([id, label]) => `<a href="#${id}">${label}</a>`).join("")}</nav><div class="help-content">
   <section id="help-start" class="help-section"><div class="help-section-title"><span>${icon("rocket", 20)}</span><div><span class="eyebrow">First steps</span><h3>Getting started</h3></div></div><ol class="help-steps"><li><b>Create a tournament</b><span>Enter its name, format, date, venue, time control, and format-specific settings.</span></li><li><b>Register players</b><span>After creation, Player Management opens automatically. Add saved profiles or create new ones.</span></li><li><b>Review the field</b><span>Player and team registration remains editable until pairing history or recorded results lock the roster.</span></li><li><b>Open Pairings</b><span>The first round is created automatically when at least two eligible entrants are registered.</span></li><li><b>Enter every result</b><span>Review the completed round, then explicitly confirm before the next round is created.</span></li><li><b>Publish the final ranking</b><span>After the scheduled final round, end the tournament to display the official results.</span></li></ol></section>
-  <section id="help-formats" class="help-section"><div class="help-section-title"><span>${icon("layout-grid", 20)}</span><div><span class="eyebrow">Competition systems</span><h3>Tournament formats</h3></div></div><div class="help-card-grid"><article class="help-card"><span class="help-card-icon">${icon("git-merge", 20)}</span><h4>Swiss System</h4><p>Players with similar scores are paired while repeat opponents and color imbalance are minimized. The recommended rounds are <b>ceil(log₂ entrants)</b>; the organizer may adjust this up to the no-repeat maximum.</p></article><article class="help-card"><span class="help-card-icon">${icon("table-2", 20)}</span><h4>Round Robin</h4><p>Every player meets every other player exactly once. Even fields play <b>n − 1</b> rounds; odd fields play <b>n</b> rounds with one bye per player. The round count is automatic.</p></article><article class="help-card"><span class="help-card-icon">${icon("network", 20)}</span><h4>Knockout / Elimination</h4><p>A rating-seeded single-elimination bracket. Top seeds are distributed across opposite sections, high seeds receive byes when needed, and only decisive winners advance.</p></article><article class="help-card"><span class="help-card-icon">${icon("shield", 20)}</span><h4>Team formats</h4><p>Team Swiss and Team Round Robin group individual boards into team matches. Exact rosters are selected before registration, and board results feed the team table.</p></article></div></section>
+  <section id="help-formats" class="help-section"><div class="help-section-title"><span>${icon("layout-grid", 20)}</span><div><span class="eyebrow">Competition systems</span><h3>Tournament formats</h3></div></div><div class="help-card-grid"><article class="help-card"><span class="help-card-icon">${icon("git-merge", 20)}</span><h4>Swiss System</h4><p>Players with similar scores are paired while repeat opponents and color imbalance are minimized. The recommended rounds are <b>ceil(log₂ entrants)</b>; the organizer may adjust this up to the no-repeat maximum.</p></article><article class="help-card"><span class="help-card-icon">${icon("table-2", 20)}</span><h4>Round Robin</h4><p>Every player meets every other player exactly once. Even fields play <b>n − 1</b> rounds; odd fields play <b>n</b> rounds with one bye per player. The round count is automatic.</p></article><article class="help-card"><span class="help-card-icon">${icon("network", 20)}</span><h4>Knockout / Elimination</h4><p>A rating-seeded single-elimination bracket. Top seeds are distributed across opposite sections, high seeds receive byes when needed, and only decisive winners advance.</p></article><article class="help-card"><span class="help-card-icon">${icon("shield", 20)}</span><h4>Team formats</h4><p>Team Swiss and Team Round Robin group individual boards into team matches. Reusable team profiles keep their emoji identity and exact roster so they can be registered in multiple tournaments.</p></article></div></section>
   <section id="help-pairings" class="help-section"><div class="help-section-title"><span>${icon("swords", 20)}</span><div><span class="eyebrow">How opponents are chosen</span><h3>Pairings & rounds</h3></div></div><div class="help-definition-list"><div><b>Swiss ordering</b><p>Entrants are ordered by current points, then rating. The pairing engine prefers close scores, strongly avoids repeat opponents, and balances White and Black assignments.</p></div><div><b>Swiss bye</b><p>When the field is odd, the lowest eligible player who has not already received a bye is selected where possible. A bye scores one point.</p></div><div><b>Round Robin rotation</b><p>A fixed circle rotation generates every unique opponent combination. Colors alternate through the schedule; self-pairings are impossible.</p></div><div><b>Knockout seeding</b><p>The bracket expands to the next power of two. Players are seeded by rating, with names resolving equal ratings. Draws are unavailable because each match needs a winner.</p></div><div><b>Organizer confirmation</b><p>Completing all results does not immediately advance the event. Use the continue action to review and confirm creation of the next round.</p></div><div><b>Roster changes</b><p>An untouched Round Robin opener is rebuilt when the roster changes. Once results are recorded, registration locks to protect the schedule and standings.</p></div></div></section>
   <section id="help-results" class="help-section"><div class="help-section-title"><span>${icon("check-circle-2", 20)}</span><div><span class="eyebrow">Scoring games</span><h3>Results & notation</h3></div></div><div class="help-score-grid"><div><b>1–0</b><span>White wins</span></div><div><b>½–½</b><span>Draw</span></div><div><b>0–1</b><span>Black wins</span></div><div><b>BYE</b><span>One-point unpaired round</span></div></div><p class="help-note">Individual scoring awards 1 point for a win or bye, ½ point for a draw, and 0 for a loss. Select a different result to correct an entry before advancing. Every completed round remains available in the Rounds tab.</p></section>
   <section id="help-tiebreaks" class="help-section"><div class="help-section-title"><span>${icon("scale", 20)}</span><div><span class="eyebrow">Ranking order</span><h3>Standings & tie-breaks</h3></div></div><p>Individual players are sorted using the following order. The first value that differs decides the higher rank.</p><ol class="help-ranking"><li><span>1</span><div><b>Points</b><p>Total game points earned.</p></div></li><li><span>2</span><div><b>Buchholz</b><p>The sum of all opponents’ final or current point totals. A player who faced stronger-scoring opposition receives the higher value.</p></div></li><li><span>3</span><div><b>Sonneborn–Berger</b><p>The full score of every defeated opponent plus half the score of every drawn opponent.</p></div></li><li><span>4</span><div><b>Wins</b><p>The player with more victories ranks higher.</p></div></li><li><span>5</span><div><b>Rating</b><p>Rating resolves a tie that remains after all competition tie-breaks.</p></div></li></ol><aside class="help-callout rating-formula"><b>Rated tournament Elo</b><p>For each rated game, expected score is E = 1 ÷ (1 + 10<sup>(opponent rating − player rating) ÷ 400</sup>). The change is ΔR = round(${DEFAULT_K_FACTOR} × (actual score − E)). Game changes are zero-sum: points gained by one player are deducted from the opponent. Final changes apply only when the organizer publishes the final ranking; byes, forfeits, and games involving a zero-rated player are excluded.</p></aside><aside class="help-callout"><b>Buchholz Cut 1</b><p>The standings report also displays Buchholz with the lowest opponent score removed. It is an informational field and is not currently used in the automatic ranking order.</p></aside></section>
@@ -695,10 +819,18 @@ function playersView() {
   <input hidden type="file" id="csv-file" accept=".csv,text/csv">`;
 }
 function teamsView() {
-  const teams = state.teams || [];
+  const teams = storage.listTeams();
+  const registered = new Map(
+    (state.teams || [])
+      .filter((team) => team.active)
+      .map((team) => [team.id, team]),
+  );
   const size = state.tournament.teamSize || 4;
   const profiles = storage.listPlayers();
-  return `<div class="section-head"><div><span class="eyebrow">Team directory</span><h2>Team management</h2><p class="muted">Build exact ${size}-player rosters, then choose which teams compete in ${h(state.tournament.name)}.</p></div><div class="toolbar"><button class="btn" data-view="players">${icon("users")} Manage players</button><button class="btn primary" data-action="add-team" ${tournamentStarted() ? "disabled" : ""}>${icon("shield-plus")} Create team</button></div></div><div class="roster-summary"><span><b>${teams.filter((team) => team.active).length}</b> teams registered</span><span><b>${size}</b> players per team</span><span><b>${h(state.tournament.teamScoring || "2-1-0")}</b> scoring</span></div>${
+  const registeredPlayerIds = new Set(
+    [...registered.values()].flatMap((team) => team.playerIds),
+  );
+  return `<div class="section-head"><div><span class="eyebrow">Reusable team directory</span><h2>Team management</h2><p class="muted">Create teams once, then register them for any Team Swiss or Team Round Robin tournament.</p></div><div class="toolbar team-toolbar"><button class="btn" data-view="players">${icon("users")} Manage players</button><button class="btn primary" data-action="add-team">${icon("plus")} New team profile</button></div></div><div class="roster-summary"><span><b>${registered.size}</b> teams registered</span><span><b>${teams.length}</b> reusable team profiles</span><span><b>${size}</b> players per team</span><span><b>${h(state.tournament.teamScoring || "2-1-0")}</b> scoring</span></div>${
     profiles.length < size
       ? empty(
           "♙",
@@ -710,16 +842,22 @@ function teamsView() {
       : teams.length
         ? `<div class="team-grid">${teams
             .map((team) => {
+              const isRegistered = registered.has(team.id);
               const members = team.playerIds
                 .map((id) => player(id))
                 .filter(Boolean);
-              return `<article class="team-card ${team.active ? "active" : ""}"><div class="team-card-head"><span class="team-mark">${icon("shield", 20)}</span><div><h3>${h(team.name)}</h3><small>${members.length}/${size} players</small></div><div class="team-actions"><button class="icon-btn" data-edit-team="${team.id}" aria-label="Edit ${h(team.name)}" ${tournamentStarted() ? "disabled" : ""}>${icon("pencil")}</button><button class="icon-btn" data-delete-team="${team.id}" aria-label="Delete ${h(team.name)}" ${tournamentStarted() ? "disabled" : ""}>${icon("trash-2")}</button></div></div><div class="team-members">${members.map((member, index) => `<span><b>${index + 1}</b>${avatarMarkup(member!)}<span>${h(member!.name)}<small>${member!.rating}</small></span></span>`).join("")}</div>${team.active ? `<button class="btn registration registered" data-remove-team="${team.id}" ${tournamentStarted() ? "disabled" : ""}>${icon("check", 14)} Registered</button>` : `<button class="btn registration" data-add-team="${team.id}" ${team.playerIds.length !== size || tournamentStarted() ? "disabled" : ""}>${icon("plus", 14)} Add team to tournament</button>`}</article>`;
+              const rosterConflict = team.playerIds.some(
+                (id) =>
+                  registeredPlayerIds.has(id) &&
+                  !registered.get(team.id)?.playerIds.includes(id),
+              );
+              return `<article class="team-card ${isRegistered ? "active" : ""}"><div class="team-card-head">${teamMark(team)}<div><h3>${h(team.name)}</h3><small>${members.length}/${size} players · reusable profile</small></div><div class="team-actions"><button class="icon-btn" data-edit-team="${team.id}" aria-label="Edit ${h(team.name)}" ${tournamentStarted() && isRegistered ? "disabled" : ""}>${icon("pencil")}</button><button class="icon-btn" data-delete-team="${team.id}" aria-label="Delete ${h(team.name)}">${icon("trash-2")}</button></div></div><div class="team-members">${members.map((member, index) => `<span><b>${index + 1}</b>${avatarMarkup(member!)}<span>${h(member!.name)}<small>${member!.rating}</small></span></span>`).join("")}</div>${isRegistered ? `<button class="btn registration registered" data-remove-team="${team.id}" ${tournamentStarted() ? "disabled" : ""}>${icon("check", 14)} Registered</button>` : `<button class="btn registration" data-add-team="${team.id}" ${team.playerIds.length !== size || rosterConflict || tournamentStarted() ? "disabled" : ""}>${icon("plus", 14)} ${rosterConflict ? "Roster conflicts with a registered team" : "Add team to tournament"}</button>`}</article>`;
             })
             .join("")}</div>`
         : empty(
             "♜",
-            "No teams yet",
-            `Create a team and select exactly ${size} players.`,
+            "No reusable teams yet",
+            `Create a team profile with exactly ${size} players and an emoji icon.`,
             "Create first team",
             "add-team",
           )
@@ -997,7 +1135,7 @@ function teamPairingsCards(round: Round): string {
               : 0)
           );
         }, 0);
-      return `<section class="team-match-card"><header><span class="board-no">Match ${index + 1}</span><div><b>${h(first?.name || "Team")}</b><strong>${score(firstId).toFixed(1)} – ${second ? score(secondId).toFixed(1) : "BYE"}</strong><b>${h(second?.name || "Bye")}</b></div></header><div class="card">${boards.map((game) => board(game, round)).join("")}</div></section>`;
+      return `<section class="team-match-card"><header><span class="board-no">Match ${index + 1}</span><div><b><span class="team-pairing-mark">${h(teamEmoji(first))}</span>${h(first?.name || "Team")}</b><strong>${score(firstId).toFixed(1)} – ${second ? score(secondId).toFixed(1) : "BYE"}</strong><b>${second ? `<span class="team-pairing-mark">${h(teamEmoji(second))}</span>` : ""}${h(second?.name || "Bye")}</b></div></header><div class="card">${boards.map((game) => board(game, round)).join("")}</div></section>`;
     })
     .join("")}</div>`;
 }
@@ -1100,6 +1238,15 @@ function rankingHeading(): string {
   return `Rank after Round ${round}${missing ? ` (${missing} results missing)` : ""}`;
 }
 
+function rankingPlacement(rank: number): string {
+  const labels = ["Champion", "First runner-up", "Second runner-up"];
+  const crown =
+    state.tournament.finished && rank <= 3
+      ? `<span class="ranking-crown crown-${rank}" role="img" aria-label="${labels[rank - 1]}">${icon("crown", 16)}</span>`
+      : "";
+  return `<span class="rank-placement">${crown}<span>${rank}</span></span>`;
+}
+
 function standingsTable(
   rows = standings(state.players, state.rounds),
   includeReportHeading = false,
@@ -1123,20 +1270,22 @@ function standingsTable(
     includeReportHeading
       ? `<header class="ranking-heading"><span class="eyebrow">Official tournament report</span><h3>${h(rankingHeading())}</h3><p>${h(details)}</p></header>`
       : ""
-  }<div class="table-wrap"><table class="ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th>Name</th><th>Federation</th><th>Rtg</th>${ratingChanges ? `<th title="${state.tournament.finished ? "Final" : "Projected"} Elo change">ΔRtg</th>` : ""}<th>Club/City</th><th>Pts.</th><th title="Buchholz">TB1</th><th title="Buchholz Cut 1">TB2</th><th title="Sonneborn-Berger">TB3</th></tr></thead><tbody>${rows
+  }<div class="table-wrap"><table class="ranking-table individual-ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th>Name</th><th>FED</th><th>Rtg</th><th>Games</th><th title="Wins">+</th><th title="Draws">=</th><th title="Losses">−</th><th>Pts.</th>${ratingChanges ? `<th title="${state.tournament.finished ? "Final" : "Projected"} Elo change">ΔRtg</th>` : ""}<th>Club/City</th><th title="Buchholz">TB1</th><th title="Buchholz Cut 1">TB2</th><th title="Sonneborn-Berger">TB3</th></tr></thead><tbody>${rows
     .map((entry) => {
       const startNumber =
         state.players.findIndex((profile) => profile.id === entry.player.id) +
         1;
-      return `<tr class="medal-${entry.rank}"><td class="rank">${entry.rank}</td><td class="mono">${startNumber}</td><td><button class="ranking-name" data-player="${entry.player.id}">${h(entry.player.name)}</button></td><td class="flag-cell">${countryFlag(entry.player.country)}</td><td class="mono">${entry.player.rating || 0}</td>${ratingChanges ? `<td class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">${ratingChangeText(entry.player.id)}</td>` : ""}<td>${h(entry.player.club || "—")}</td><td class="score">${entry.points.toFixed(1)}</td><td>${entry.buchholz.toFixed(1)}</td><td>${entry.buchholzCut.toFixed(1)}</td><td>${entry.sonneborn.toFixed(1)}</td></tr>`;
+      const games = entry.wins + entry.draws + entry.losses;
+      return `<tr class="medal-${entry.rank}"><td class="rank">${rankingPlacement(entry.rank)}</td><td class="mono">${startNumber}</td><td><button class="ranking-name" data-player="${entry.player.id}">${h(entry.player.name)}</button></td><td class="flag-cell">${countryFlag(entry.player.country)}</td><td class="mono">${entry.player.rating || 0}</td><td>${games}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td><td class="score">${entry.points.toFixed(1)}</td>${ratingChanges ? `<td class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">${ratingChangeText(entry.player.id)}</td>` : ""}<td>${h(entry.player.club || "—")}</td><td>${entry.buchholz.toFixed(1)}</td><td>${entry.buchholzCut.toFixed(1)}</td><td>${entry.sonneborn.toFixed(1)}</td></tr>`;
     })
     .join("")}</tbody></table></div><div class="mobile-ranking-list">${rows
-    .map(
-      (entry) =>
-        `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${entry.rank}</span><div class="mobile-rank-player"><span><button data-player="${entry.player.id}">${h(entry.player.name)}</button><small>${federationCode(entry.player.country)} · ${entry.player.rating || 0}${ratingChanges ? ` · <span class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">Δ ${ratingChangeText(entry.player.id)}</span>` : ""}${entry.player.club ? ` · ${h(entry.player.club)}` : ""}</small></span></div><div class="mobile-rank-score"><b>${entry.points.toFixed(1)}</b><small>Points</small></div><dl><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div><div><dt>TB2</dt><dd>${entry.buchholzCut.toFixed(1)}</dd></div><div><dt>TB3</dt><dd>${entry.sonneborn.toFixed(1)}</dd></div></dl></article>`,
-    )
+    .map((entry) => {
+      const games = entry.wins + entry.draws + entry.losses;
+      return `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${rankingPlacement(entry.rank)}</span><div class="mobile-rank-player"><span><button data-player="${entry.player.id}">${h(entry.player.name)}</button><small>${federationCode(entry.player.country)} · ${entry.player.rating || 0}${ratingChanges ? ` · <span class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">Δ ${ratingChangeText(entry.player.id)}</span>` : ""}${entry.player.club ? ` · ${h(entry.player.club)}` : ""}</small></span></div><div class="mobile-rank-score"><b>${entry.points.toFixed(1)}</b><small>Points</small></div><dl><div><dt>Games</dt><dd>${games}</dd></div><div><dt>+</dt><dd>${entry.wins}</dd></div><div><dt>=</dt><dd>${entry.draws}</dd></div><div><dt>−</dt><dd>${entry.losses}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div><div><dt>TB2</dt><dd>${entry.buchholzCut.toFixed(1)}</dd></div><div><dt>TB3</dt><dd>${entry.sonneborn.toFixed(1)}</dd></div></dl></article>`;
+    })
     .join("")}</div></section>`;
 }
+
 function teamStandingsTable(
   rows = teamStandings(
     state.teams || [],
@@ -1145,7 +1294,21 @@ function teamStandingsTable(
   ),
 ) {
   const boardOnly = state.tournament.teamScoring === "board-points";
-  return `<div class="table-wrap"><table class="ranking-table team-ranking-table"><thead><tr><th>Rk.</th><th>Team</th><th>Roster</th>${boardOnly ? "" : "<th>MP</th>"}<th>BP</th><th>W</th><th>D</th><th>L</th><th>TB1</th></tr></thead><tbody>${rows.map((entry) => `<tr class="medal-${entry.rank}"><td class="rank">${entry.rank}</td><td><b>${h(entry.team.name)}</b></td><td>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(", ")}</td>${boardOnly ? "" : `<td class="score">${entry.matchPoints}</td>`}<td class="score">${entry.boardPoints.toFixed(1)}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td><td>${entry.buchholz.toFixed(1)}</td></tr>`).join("")}</tbody></table></div><div class="mobile-ranking-list team-mobile-ranking">${rows.map((entry) => `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${entry.rank}</span><div class="mobile-rank-player"><span class="team-mark">${icon("shield", 16)}</span><span><b>${h(entry.team.name)}</b><small>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(" · ")}</small></span></div><div class="mobile-rank-score"><b>${boardOnly ? entry.boardPoints.toFixed(1) : entry.matchPoints}</b><small>${boardOnly ? "BP" : "MP"}</small></div><dl><div><dt>Board pts</dt><dd>${entry.boardPoints.toFixed(1)}</dd></div><div><dt>W-D-L</dt><dd>${entry.wins}-${entry.draws}-${entry.losses}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div></dl></article>`).join("")}</div>`;
+  return `<div class="table-wrap"><table class="ranking-table team-ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th>Team</th><th>Roster</th><th>Games</th><th title="Wins">+</th><th title="Draws">=</th><th title="Losses">−</th>${boardOnly ? "" : "<th>MP</th>"}<th>BP</th><th title="Team Buchholz">TB1</th></tr></thead><tbody>${rows
+    .map((entry) => {
+      const startNumber =
+        (state.teams || []).findIndex((team) => team.id === entry.team.id) + 1;
+      const games = entry.wins + entry.draws + entry.losses;
+      return `<tr class="medal-${entry.rank}"><td class="rank">${rankingPlacement(entry.rank)}</td><td class="mono">${startNumber}</td><td><span class="team-table-team">${teamMark(entry.team, "team-table-mark")}<b>${h(entry.team.name)}</b></span></td><td>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(", ")}</td><td>${games}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td>${boardOnly ? "" : `<td class="score">${entry.matchPoints}</td>`}<td class="score">${entry.boardPoints.toFixed(1)}</td><td>${entry.buchholz.toFixed(1)}</td></tr>`;
+    })
+    .join(
+      "",
+    )}</tbody></table></div><div class="mobile-ranking-list team-mobile-ranking">${rows
+    .map((entry) => {
+      const games = entry.wins + entry.draws + entry.losses;
+      return `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${rankingPlacement(entry.rank)}</span><div class="mobile-rank-player">${teamMark(entry.team)}<span><b>${h(entry.team.name)}</b><small>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(" · ")}</small></span></div><div class="mobile-rank-score"><b>${boardOnly ? entry.boardPoints.toFixed(1) : entry.matchPoints}</b><small>${boardOnly ? "BP" : "MP"}</small></div><dl><div><dt>Games</dt><dd>${games}</dd></div><div><dt>+</dt><dd>${entry.wins}</dd></div><div><dt>=</dt><dd>${entry.draws}</dd></div><div><dt>−</dt><dd>${entry.losses}</dd></div><div><dt>BP</dt><dd>${entry.boardPoints.toFixed(1)}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div></dl></article>`;
+    })
+    .join("")}</div>`;
 }
 
 function finalResultsBanner(
@@ -1197,7 +1360,7 @@ function teamStandingsView() {
             state.tournament.teamScoring === "board-points"
               ? "board points"
               : "match points",
-          portrait: `<span class="podium-team-mark">${icon("shield", 18)}</span>`,
+          portrait: teamMark(entry.team, "podium-team-mark"),
         })),
         true,
       )
@@ -1258,7 +1421,7 @@ function archivedRoundBoards(round: Round): string {
         (team) =>
           team.id === boards.find((game) => game.blackTeamId)?.blackTeamId,
       );
-      return `<section class="team-match-card archived-team-match"><header><span class="board-no">Match ${index + 1}</span><div><b>${h(whiteTeam?.name || "Team")}</b><strong>vs</strong><b>${h(blackTeam?.name || "Bye")}</b></div></header>${boards.map(archivedBoard).join("")}</section>`;
+      return `<section class="team-match-card archived-team-match"><header><span class="board-no">Match ${index + 1}</span><div><b><span class="team-pairing-mark">${h(teamEmoji(whiteTeam))}</span>${h(whiteTeam?.name || "Team")}</b><strong>vs</strong><b>${blackTeam ? `<span class="team-pairing-mark">${h(teamEmoji(blackTeam))}</span>` : ""}${h(blackTeam?.name || "Bye")}</b></div></header>${boards.map(archivedBoard).join("")}</section>`;
     })
     .join("")}</div>`;
 }
@@ -1381,19 +1544,27 @@ function playerForm() {
     </section>
   </div>`;
 }
+function emojiPicker(selected: string): string {
+  return `<section class="emoji-picker" aria-labelledby="team-emoji-title"><div class="emoji-category-tabs" role="tablist" aria-label="Emoji categories">${TEAM_EMOJI_CATEGORIES.map((category, index) => `<button type="button" data-emoji-category="${category.id}" class="${index === 0 ? "active" : ""}" role="tab" aria-selected="${index === 0}" aria-label="${category.label}">${category.icon}</button>`).join("")}</div><label class="emoji-search">${icon("search", 16)}<input id="team-emoji-search" type="search" placeholder="Search emojis" aria-label="Search team emojis"></label><div class="emoji-category-label" id="team-emoji-title">${TEAM_EMOJI_CATEGORIES[0].label}</div><div class="emoji-grid" role="listbox" aria-label="Choose a team emoji">${TEAM_EMOJI_CATEGORIES.flatMap((category) => category.emojis.map(([emoji, keywords]) => `<button type="button" data-team-emoji="${emoji}" data-emoji-group="${category.id}" data-emoji-search="${h(`${category.label} ${keywords}`.toLowerCase())}" role="option" aria-selected="${selected === emoji}" class="${selected === emoji ? "selected" : ""}" aria-label="${h(keywords)}" ${category.id === TEAM_EMOJI_CATEGORIES[0].id ? "" : "hidden"}>${emoji}</button>`)).join("")}</div><div class="emoji-selection"><span id="team-emoji-preview" role="img" aria-label="Selected team icon">${h(selected)}</span><span id="team-emoji-label">Selected team emoji</span><button type="button" class="btn" data-action="clear-team-emoji">Clear</button></div></section>`;
+}
+
 function teamForm() {
   const editing = modal.startsWith("team:");
   const existing = editing
-    ? (state.teams || []).find((team) => team.id === modal.split(":")[1])
+    ? storage.listTeams().find((team) => team.id === modal.split(":")[1])
     : undefined;
+  const registered = (state.teams || []).some(
+    (team) => team.id === existing?.id && team.active,
+  );
   const size = state.tournament.teamSize || 4;
   const occupied = new Set(
     (state.teams || [])
-      .filter((team) => team.id !== existing?.id)
+      .filter((team) => team.active && team.id !== existing?.id)
       .flatMap((team) => team.playerIds),
   );
   const profiles = storage.listPlayers();
-  return `<div class="modal-backdrop"><section class="modal team-modal" role="dialog" aria-modal="true" aria-labelledby="team-modal-title" data-modal><div class="modal-head"><div><span class="eyebrow">${editing ? "Edit roster" : "New roster"}</span><h2 id="team-modal-title">${editing ? h(existing?.name || "Team") : "Create team"}</h2><p class="muted">Choose exactly ${size} unique players.</p></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="team-form"><input type="hidden" name="id" value="${existing?.id || ""}"><div class="field"><label>Team name *</label><input name="name" required autofocus value="${h(existing?.name || "")}" placeholder="e.g. Green Knights"></div><div class="team-player-picker" role="group" aria-label="Choose ${size} players">${profiles
+  const selectedEmoji = teamEmoji(existing);
+  return `<div class="modal-backdrop"><section class="modal team-modal" role="dialog" aria-modal="true" aria-labelledby="team-modal-title" data-modal><div class="modal-head"><div><span class="eyebrow">Reusable team directory</span><h2 id="team-modal-title">${editing ? h(existing?.name || "Team") : "Create team profile"}</h2><p class="muted">Choose an emoji and exactly ${size} players. The profile can be reused in other tournaments.</p></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="team-form"><input type="hidden" name="id" value="${existing?.id || ""}"><input id="team-emoji-value" type="hidden" name="emoji" value="${h(selectedEmoji)}"><div class="field"><label>Team name *</label><input name="name" required autofocus value="${h(existing?.name || "")}" placeholder="e.g. Green Knights"></div><div class="field"><label>Team emoji</label>${emojiPicker(selectedEmoji)}</div><div class="team-player-picker" role="group" aria-label="Choose ${size} players">${profiles
     .map((profile) => {
       const selected = existing?.playerIds.includes(profile.id) || false;
       const unavailable = occupied.has(profile.id) && !selected;
@@ -1401,8 +1572,9 @@ function teamForm() {
     })
     .join(
       "",
-    )}</div><output id="team-player-count" class="team-player-count" aria-live="polite">${existing?.playerIds.length || 0} of ${size} selected</output><label class="registration-option"><input type="checkbox" name="registerCurrent" ${existing?.active === false ? "" : "checked"}><span><b>Add team to this tournament</b><small>The team becomes eligible for pairings immediately.</small></span></label><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">${editing ? "Save team" : "Create team"}</button></div></form></section></div>`;
+    )}</div><output id="team-player-count" class="team-player-count" aria-live="polite">${existing?.playerIds.length || 0} of ${size} selected</output><label class="registration-option"><input type="checkbox" name="registerCurrent" ${registered || !editing ? "checked" : ""} ${tournamentStarted() ? "disabled" : ""}><span><b>Add team to this tournament</b><small>${tournamentStarted() ? "Registration is locked because Round 1 has started." : "The reusable team becomes eligible for pairings immediately."}</small></span></label><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button type="submit" class="btn primary">${editing ? "Save team profile" : "Create team profile"}</button></div></form></section></div>`;
 }
+
 function tournamentForm() {
   const t = state.tournament;
   return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><h2>Tournament settings</h2><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="tournament-form"><div class="form-grid"><div class="field"><label>Tournament name *</label><input name="name" required value="${h(t.name)}"></div><div class="field"><label>Venue</label><input name="venue" value="${h(t.venue)}"></div><div class="field"><label>Organizer</label><input name="organizer" value="${h(t.organizer)}"></div><div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div><div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>${roundCountField(t)}<div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Knockout", "Team Swiss", "Team Round Robin"].map((x) => `<option ${t.type === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>${ratingStatusField(t)}${teamSettingsFields(t)}</div><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save tournament</button></div></form></section></div>`;
@@ -1804,47 +1976,64 @@ function submitPlayer(form: HTMLFormElement) {
   }
 }
 function submitTeam(form: HTMLFormElement) {
-  if (tournamentStarted()) {
-    toast("Team rosters lock after Round 1 starts.", "error");
-    return;
-  }
   const data = new FormData(form);
   const id = String(data.get("id") || uid());
+  const wasRegistered = (state.teams || []).some(
+    (team) => team.id === id && team.active,
+  );
+  if (tournamentStarted() && wasRegistered) {
+    toast("Registered team rosters lock after Round 1 starts.", "error");
+    return;
+  }
   const playerIds = data.getAll("playerIds").map(String);
   const size = state.tournament.teamSize || 4;
   if (playerIds.length !== size) {
     toast(`Choose exactly ${size} players for this team.`, "error");
     return;
   }
-  const duplicate = (state.teams || [])
-    .filter((team) => team.id !== id)
-    .some((team) =>
-      team.playerIds.some((playerId) => playerIds.includes(playerId)),
-    );
+  const registerCurrent =
+    !tournamentStarted() && data.get("registerCurrent") === "on";
+  const duplicate =
+    registerCurrent &&
+    (state.teams || [])
+      .filter((team) => team.id !== id && team.active)
+      .some((team) =>
+        team.playerIds.some((playerId) => playerIds.includes(playerId)),
+      );
   if (duplicate) {
-    toast("A player can belong to only one team in this tournament.", "error");
+    toast(
+      "A player can belong to only one registered team in this tournament.",
+      "error",
+    );
     return;
   }
-  const team: Team = {
+  const reusableTeam: Team = {
     id,
     name: String(data.get("name")),
     playerIds,
-    active: data.get("registerCurrent") === "on",
+    emoji: String(data.get("emoji") || "🛡️"),
+    active: false,
   };
+  storage.saveTeam(reusableTeam);
   state.teams ||= [];
   const index = state.teams.findIndex((entry) => entry.id === id);
-  if (index >= 0) state.teams[index] = team;
-  else state.teams.push(team);
-  for (const playerId of playerIds) {
-    if (state.players.some((profile) => profile.id === playerId)) continue;
-    const profile = storage
-      .listPlayers()
-      .find((candidate) => candidate.id === playerId);
-    if (profile) state.players.push({ ...profile, active: true });
+  if (registerCurrent) {
+    const registration = { ...reusableTeam, active: true };
+    if (index >= 0) state.teams[index] = registration;
+    else state.teams.push(registration);
+    for (const playerId of playerIds) {
+      if (state.players.some((profile) => profile.id === playerId)) continue;
+      const profile = storage
+        .listPlayers()
+        .find((candidate) => candidate.id === playerId);
+      if (profile) state.players.push({ ...profile, active: true });
+    }
+  } else if (index >= 0 && !tournamentStarted()) {
+    state.teams.splice(index, 1);
   }
   syncAutomaticRoundCount();
   modal = "";
-  save(index >= 0 ? "Team updated" : "Team created");
+  save(index >= 0 ? "Team profile updated" : "Reusable team profile created");
   render();
 }
 
@@ -1950,7 +2139,7 @@ app.addEventListener("click", (e) => {
     return;
   }
   const el = target.closest<HTMLElement>(
-    "[data-action],[data-view],[data-player],[data-edit-player],[data-delete-player],[data-add-to-tournament],[data-remove-from-tournament],[data-edit-team],[data-delete-team],[data-add-team],[data-remove-team],[data-switch-tournament],[data-delete-tournament],[data-result],[data-round],[data-export],[data-theme-choice],[data-layout-toggle]",
+    "[data-action],[data-view],[data-player],[data-edit-player],[data-delete-player],[data-add-to-tournament],[data-remove-from-tournament],[data-edit-team],[data-delete-team],[data-add-team],[data-remove-team],[data-switch-tournament],[data-delete-tournament],[data-result],[data-round],[data-export],[data-theme-choice],[data-layout-toggle],[data-team-emoji],[data-emoji-category]",
   );
   if (!el) return;
   if (el.dataset.themeChoice) {
@@ -2000,6 +2189,45 @@ app.addEventListener("click", (e) => {
     render();
     return;
   }
+  if (el.dataset.teamEmoji) {
+    const value = el.dataset.teamEmoji;
+    const input = document.querySelector<HTMLInputElement>("#team-emoji-value");
+    const preview = document.querySelector<HTMLElement>("#team-emoji-preview");
+    if (input) input.value = value;
+    if (preview) preview.textContent = value;
+    document
+      .querySelectorAll<HTMLElement>("[data-team-emoji]")
+      .forEach((button) => {
+        const selected = button.dataset.teamEmoji === value;
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-selected", String(selected));
+      });
+    return;
+  }
+  if (el.dataset.emojiCategory) {
+    const category = el.dataset.emojiCategory;
+    document
+      .querySelectorAll<HTMLElement>("[data-emoji-category]")
+      .forEach((button) => {
+        const selected = button.dataset.emojiCategory === category;
+        button.classList.toggle("active", selected);
+        button.setAttribute("aria-selected", String(selected));
+      });
+    document
+      .querySelectorAll<HTMLElement>("[data-team-emoji]")
+      .forEach((button) => {
+        button.hidden = button.dataset.emojiGroup !== category;
+      });
+    const label = document.querySelector<HTMLElement>(".emoji-category-label");
+    const selectedCategory = TEAM_EMOJI_CATEGORIES.find(
+      (entry) => entry.id === category,
+    );
+    if (label && selectedCategory) label.textContent = selectedCategory.label;
+    const searchInput =
+      document.querySelector<HTMLInputElement>("#team-emoji-search");
+    if (searchInput) searchInput.value = "";
+    return;
+  }
   if (el.dataset.player) {
     selectedPlayer = el.dataset.player;
     render();
@@ -2041,24 +2269,48 @@ app.addEventListener("click", (e) => {
     return;
   }
   if (el.dataset.deleteTeam) {
-    const team = (state.teams || []).find(
-      (candidate) => candidate.id === el.dataset.deleteTeam,
-    );
-    if (team && confirm(`Delete ${team.name}?`)) {
-      state.teams = (state.teams || []).filter((entry) => entry.id !== team.id);
-      syncAutomaticRoundCount();
-      save("Team deleted");
-      render();
+    const team = storage
+      .listTeams()
+      .find((candidate) => candidate.id === el.dataset.deleteTeam);
+    if (team && confirm(`Delete the reusable profile for ${team.name}?`)) {
+      const removed = storage.removeTeam(team.id);
+      if (removed) {
+        toast("Team profile deleted", "success");
+        render();
+      } else {
+        toast(
+          "Remove this team from every tournament before deleting its profile.",
+          "error",
+        );
+      }
     }
     return;
   }
   if (el.dataset.addTeam || el.dataset.removeTeam) {
     const id = el.dataset.addTeam || el.dataset.removeTeam;
-    const team = (state.teams || []).find((candidate) => candidate.id === id);
-    if (team && !tournamentStarted()) {
-      team.active = Boolean(el.dataset.addTeam);
-      if (team.active)
-        for (const playerId of team.playerIds) {
+    const reusable = storage
+      .listTeams()
+      .find((candidate) => candidate.id === id);
+    if (reusable && !tournamentStarted()) {
+      state.teams ||= [];
+      if (el.dataset.addTeam) {
+        const occupied = new Set(
+          state.teams
+            .filter((team) => team.active && team.id !== reusable.id)
+            .flatMap((team) => team.playerIds),
+        );
+        if (reusable.playerIds.some((playerId) => occupied.has(playerId))) {
+          toast(
+            "A player can belong to only one registered team in this tournament.",
+            "error",
+          );
+          return;
+        }
+        const registration = { ...reusable, active: true };
+        const index = state.teams.findIndex((team) => team.id === reusable.id);
+        if (index >= 0) state.teams[index] = registration;
+        else state.teams.push(registration);
+        for (const playerId of reusable.playerIds) {
           if (state.players.some((profile) => profile.id === playerId))
             continue;
           const profile = storage
@@ -2066,8 +2318,15 @@ app.addEventListener("click", (e) => {
             .find((candidate) => candidate.id === playerId);
           if (profile) state.players.push({ ...profile, active: true });
         }
+      } else {
+        state.teams = state.teams.filter((team) => team.id !== reusable.id);
+      }
       syncAutomaticRoundCount();
-      save(team.active ? "Team added to tournament" : "Team removed");
+      save(
+        el.dataset.addTeam
+          ? "Team added to tournament"
+          : "Team removed from tournament",
+      );
       render();
     }
     return;
@@ -2257,6 +2516,18 @@ app.addEventListener("click", (e) => {
         : "Tournament ended · final rankings published",
     );
     render();
+  } else if (a === "clear-team-emoji") {
+    const input = document.querySelector<HTMLInputElement>("#team-emoji-value");
+    const preview = document.querySelector<HTMLElement>("#team-emoji-preview");
+    if (input) input.value = "🛡️";
+    if (preview) preview.textContent = "🛡️";
+    document
+      .querySelectorAll<HTMLElement>("[data-team-emoji]")
+      .forEach((button) => {
+        const selected = button.dataset.teamEmoji === "🛡️";
+        button.classList.toggle("selected", selected);
+        button.setAttribute("aria-selected", String(selected));
+      });
   } else if (a === "remove-avatar") {
     pendingAvatar = "";
     render();
@@ -2386,6 +2657,26 @@ app.addEventListener("input", (e) => {
   if (t.id === "player-age") {
     const output = document.querySelector<HTMLOutputElement>("#age-category");
     if (output) output.value = categoryForAge(Number(t.value));
+  }
+  if (t.id === "team-emoji-search") {
+    const query = t.value.trim().toLowerCase();
+    const activeCategory = document.querySelector<HTMLElement>(
+      "[data-emoji-category].active",
+    )?.dataset.emojiCategory;
+    document
+      .querySelectorAll<HTMLElement>("[data-team-emoji]")
+      .forEach((button) => {
+        button.hidden = query
+          ? !button.dataset.emojiSearch?.includes(query)
+          : button.dataset.emojiGroup !== activeCategory;
+      });
+    const label = document.querySelector<HTMLElement>(".emoji-category-label");
+    if (label)
+      label.textContent = query
+        ? "Search results"
+        : TEAM_EMOJI_CATEGORIES.find(
+            (category) => category.id === activeCategory,
+          )?.label || "Emojis";
   }
 });
 app.addEventListener("change", (e) => {

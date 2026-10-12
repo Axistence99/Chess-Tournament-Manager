@@ -386,6 +386,9 @@ test("Bughouse team match ends on the first teammate win", async ({ page }) => {
   await greenTeam.locator(".registration").click();
 
   await page.locator('[data-action="add-team"]').click();
+  await expect(page.locator(".emoji-picker")).toBeVisible();
+  await page.locator("#team-emoji-search").fill("dragon");
+  await page.locator('[data-team-emoji="🐉"]').click();
   await page.locator('#team-form [name="name"]').fill("Gold Bishops");
   for (const profile of teamEvent.players.slice(2, 4)) {
     await page
@@ -394,11 +397,9 @@ test("Bughouse team match ends on the first teammate win", async ({ page }) => {
   }
   await page.locator('#team-form button[type="submit"]').click();
   await expect(page.locator(".team-card")).toHaveCount(2);
-  await expect(
-    page
-      .locator(".team-card", { hasText: "Gold Bishops" })
-      .locator(".registered"),
-  ).toBeVisible();
+  const goldTeam = page.locator(".team-card", { hasText: "Gold Bishops" });
+  await expect(goldTeam.locator(".registered")).toBeVisible();
+  await expect(goldTeam.locator(".team-mark")).toHaveText("🐉");
 
   await page.locator('.nav [data-view="pairings"]').click();
   await expect(page.locator(".team-match-card")).toHaveCount(1);
@@ -421,6 +422,39 @@ test("Bughouse team match ends on the first teammate win", async ({ page }) => {
       .first()
       .locator("td.score"),
   ).toHaveText(["1", "1.0"]);
+  await expect(
+    page.locator(".content .team-ranking-table .ranking-crown"),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "End tournament" }).click();
+  await page.getByRole("button", { name: "Publish final rankings" }).click();
+  await expect(
+    page.locator(".content .team-ranking-table .ranking-crown"),
+  ).toHaveCount(2);
+  await expect(
+    page.locator(".content .team-ranking-table thead"),
+  ).toContainText("Games");
+
+  await page.locator('[data-action="choose-tournament"]').click();
+  await page.locator('[data-action="new-from-library"]').click();
+  await page.locator('[data-action="confirm-new"]').click();
+  await page
+    .locator('#tournament-form [name="name"]')
+    .fill("Reusable Teams QA");
+  await page.locator("#tournament-type").selectOption("Team Round Robin");
+  await page.locator('[name="teamScoring"]').selectOption("bughouse");
+  await page.locator('#tournament-form button[type="submit"]').click();
+  await page.locator('.nav [data-view="teams"]').click();
+  await expect(page.locator(".team-card")).toHaveCount(2);
+  await expect(
+    page
+      .locator(".team-card", { hasText: "Gold Bishops" })
+      .locator(".team-mark"),
+  ).toHaveText("🐉");
+  await expect(
+    page
+      .locator(".team-card", { hasText: "Gold Bishops" })
+      .locator(".registration"),
+  ).toContainText("Add team to tournament");
 });
 
 test("team formats, rating status, team size, and scoring are available during creation", async ({

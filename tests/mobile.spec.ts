@@ -66,11 +66,20 @@ test("player registration uses cards without horizontal scrolling", async ({
   await expect(registration).toBeVisible();
 
   const layout = await page.evaluate(() => {
-    const button = document
-      .querySelector<HTMLElement>("[data-add-to-tournament]")!
-      .getBoundingClientRect();
+    const buttonElement = document.querySelector<HTMLElement>(
+      "[data-add-to-tournament]",
+    )!;
+    const button = buttonElement.getBoundingClientRect();
     const list = document
       .querySelector<HTMLElement>(".players-table-wrap")!
+      .getBoundingClientRect();
+    const cardElement = buttonElement.closest("tr")!;
+    const card = cardElement.getBoundingClientRect();
+    const results = cardElement
+      .querySelector<HTMLElement>(".player-results-link")!
+      .getBoundingClientRect();
+    const edit = cardElement
+      .querySelector<HTMLElement>("[data-edit-player]")!
       .getBoundingClientRect();
     return {
       pageOverflow:
@@ -80,12 +89,23 @@ test("player registration uses cards without horizontal scrolling", async ({
       buttonRight: button.right,
       listLeft: list.left,
       listRight: list.right,
+      resultsLeft: results.left,
+      resultsRight: results.right,
+      resultsTop: results.top,
+      editLeft: edit.left,
+      editTop: edit.top,
+      cardLeft: card.left,
+      cardRight: card.right,
       viewport: window.innerWidth,
     };
   });
   expect(layout.pageOverflow).toBeLessThanOrEqual(1);
   expect(layout.buttonLeft).toBeGreaterThanOrEqual(layout.listLeft);
   expect(layout.buttonRight).toBeLessThanOrEqual(layout.listRight);
+  expect(layout.resultsLeft).toBeGreaterThanOrEqual(layout.cardLeft);
+  expect(layout.resultsRight).toBeLessThanOrEqual(layout.cardRight);
+  expect(layout.resultsRight).toBeLessThanOrEqual(layout.editLeft);
+  expect(Math.abs(layout.resultsTop - layout.editTop)).toBeLessThan(2);
   expect(layout.listRight).toBeLessThanOrEqual(layout.viewport);
 });
 

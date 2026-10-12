@@ -76,12 +76,35 @@ export function makePdf(
   drawHeading();
   d.setTextColor(30);
   let y = 49;
-  const row = (cols: string[], positions: number[]) => {
+  const crownColors: Array<[number, number, number]> = [
+    [205, 158, 45],
+    [157, 169, 173],
+    [173, 101, 58],
+  ];
+  const drawCrown = (rank: number, x: number) => {
+    const color = crownColors[rank - 1];
+    if (!color) return;
+    d.setFillColor(...color);
+    d.rect(x, y - 2.5, 5, 2, "F");
+    d.triangle(x, y - 2.5, x + 0.8, y - 5.5, x + 1.7, y - 2.5, "F");
+    d.triangle(x + 1.7, y - 2.5, x + 2.5, y - 6.2, x + 3.3, y - 2.5, "F");
+    d.triangle(x + 3.3, y - 2.5, x + 4.2, y - 5.5, x + 5, y - 2.5, "F");
+  };
+  const row = (cols: string[], positions: number[], podiumRank?: number) => {
+    const crowned =
+      s.tournament.finished && podiumRank && podiumRank >= 1 && podiumRank <= 3;
     d.setFontSize(7.5);
+    if (crowned) drawCrown(podiumRank, positions[0]);
     cols.forEach((value, index) =>
-      d.text(String(value), positions[index] || positions.at(-1) || 12, y, {
-        maxWidth: index === 3 && rankingReport ? 62 : 46,
-      }),
+      d.text(
+        String(value),
+        (positions[index] || positions.at(-1) || 12) +
+          (crowned && index === 0 ? 6 : 0),
+        y,
+        {
+          maxWidth: rankingReport && index === 2 ? 44 : 46,
+        },
+      ),
     );
     d.setDrawColor(214);
     d.line(10, y + 2.5, pageWidth - 10, y + 2.5);
@@ -96,43 +119,72 @@ export function makePdf(
   if (rankingReport) {
     const teamFormat = s.tournament.type.startsWith("Team");
     if (teamFormat) {
-      const positions = [12, 24, 88, 150, 169, 187, 204, 221, 242];
+      const boardOnly = s.tournament.teamScoring === "board-points";
+      const positions = boardOnly
+        ? [10, 24, 36, 91, 157, 177, 192, 207, 224, 246]
+        : [10, 24, 36, 84, 146, 164, 178, 192, 206, 222, 240];
       row(
-        ["Rk.", "Team", "Roster", "MP", "BP", "W", "D", "L", "TB1"],
+        [
+          "Rk.",
+          "SNo",
+          "Team",
+          "Roster",
+          "Games",
+          "+",
+          "=",
+          "-",
+          ...(boardOnly ? [] : ["MP"]),
+          "BP",
+          "TB1",
+        ],
         positions,
       );
       teamStandings(
         s.teams || [],
         s.rounds,
         s.tournament.teamScoring || "2-1-0",
-      ).forEach((entry) =>
+      ).forEach((entry) => {
+        const startNumber =
+          (s.teams || []).findIndex((team) => team.id === entry.team.id) + 1;
         row(
           [
             String(entry.rank),
+            String(startNumber),
             entry.team.name,
             entry.team.playerIds.map((id) => find(s, id)).join(", "),
-            String(entry.matchPoints),
-            entry.boardPoints.toFixed(1),
+            String(entry.wins + entry.draws + entry.losses),
             String(entry.wins),
             String(entry.draws),
             String(entry.losses),
+            ...(boardOnly ? [] : [String(entry.matchPoints)]),
+            entry.boardPoints.toFixed(1),
             entry.buchholz.toFixed(1),
           ],
           positions,
-        ),
-      );
+          entry.rank,
+        );
+      });
     } else {
-      const positions = [10, 20, 31, 40, 105, 119, 134, 190, 207, 225, 243];
+      const ratingChanges = s.tournament.rated
+        ? s.tournament.ratingChanges
+        : undefined;
+      const positions = ratingChanges
+        ? [10, 24, 35, 82, 96, 110, 127, 137, 147, 157, 171, 188, 226, 242, 258]
+        : [10, 24, 35, 87, 101, 116, 134, 145, 156, 167, 181, 218, 237, 256];
       row(
         [
           "Rk.",
           "SNo",
-          "",
           "Name",
           "FED",
           "Rtg",
-          "Club/City",
+          "Games",
+          "+",
+          "=",
+          "-",
           "Pts.",
+          ...(ratingChanges ? ["ΔRtg"] : []),
+          "Club/City",
           "TB1",
           "TB2",
           "TB3",
@@ -142,26 +194,27 @@ export function makePdf(
       standings(s.players, s.rounds).forEach((entry) => {
         const startNumber =
           s.players.findIndex((player) => player.id === entry.player.id) + 1;
-        // Carry the podium hierarchy into print without compromising legibility.
-        if (entry.rank === 1) d.setTextColor(148, 105, 25);
-        else if (entry.rank === 2) d.setTextColor(90, 104, 101);
-        else if (entry.rank === 3) d.setTextColor(139, 78, 43);
-        else d.setTextColor(30);
+        const change = ratingChanges?.[entry.player.id] || 0;
         row(
           [
             String(entry.rank),
             String(startNumber),
-            "",
             entry.player.name,
             federation(entry.player.country),
             String(entry.player.rating || 0),
-            entry.player.club || "—",
+            String(entry.wins + entry.draws + entry.losses),
+            String(entry.wins),
+            String(entry.draws),
+            String(entry.losses),
             entry.points.toFixed(1),
+            ...(ratingChanges ? [`${change > 0 ? "+" : ""}${change}`] : []),
+            entry.player.club || "—",
             entry.buchholz.toFixed(1),
             entry.buchholzCut.toFixed(1),
             entry.sonneborn.toFixed(1),
           ],
           positions,
+          entry.rank,
         );
       });
     }

@@ -84,6 +84,16 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(page.locator(".podium-3")).toBeVisible();
   await expect(page.locator(".podium article").nth(1)).toHaveClass(/podium-1/);
   await expect(page.locator(".podium .avatar")).toHaveCount(0);
+  const finalTable = page.locator(".content .ranking-table");
+  await expect(finalTable.locator(".ranking-crown")).toHaveCount(3);
+  await expect(finalTable.locator(".ranking-crown.crown-1")).toHaveAttribute(
+    "aria-label",
+    "Champion",
+  );
+  await expect(finalTable.locator("thead")).toContainText("Games");
+  await expect(finalTable.locator("thead")).toContainText("+");
+  await expect(finalTable.locator("thead")).toContainText("=");
+  await expect(finalTable.locator("thead")).toContainText("−");
   await expect(
     page.locator(".ranking-table .rating-change.positive"),
   ).not.toHaveCount(0);

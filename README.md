@@ -7,7 +7,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Multi-tournament library: create, choose, resume, import, and delete independent events
 - Swiss pairing by score group, with roster-based round recommendations, no-repeat schedule caps, repeat-opponent avoidance, color balancing, and fair bye assignment
 - Round-robin pairing via the circle method, automatic rounds from field size, no self-pairings, and a responsive all-play-all crosstable
-- Team Swiss and Team Round Robin events with exact-size rosters, team registration, grouped boards, automatic all-play-all schedules, and repeat-aware Swiss team pairing
+- Team Swiss and Team Round Robin events with reusable emoji team profiles, exact-size rosters, per-tournament registration, grouped boards, automatic all-play-all schedules, and repeat-aware Swiss team pairing
 - Selectable team scoring at creation: 2–1–0 match points, 3–1–0 match points, board points only, or two-player Bughouse where the first teammate win earns 1 team point
 - Adaptive visual knockout trees: compact one-sided brackets for small fields and mirrored brackets for larger events
 - Automatic first-round creation, instant result entry, and organizer confirmation before each subsequent round

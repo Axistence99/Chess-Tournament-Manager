@@ -1,9 +1,10 @@
 /** LocalStorage repository for reusable profiles and multiple tournaments. */
-import type { AppState, Player } from "../models";
+import type { AppState, Player, Team } from "../models";
 
 /**
- * One browser library owns two related data sets:
+ * One browser library owns three related data sets:
  * - reusable player profiles
+ * - reusable team profiles with emoji identities and rosters
  * - tournaments containing snapshots of the profiles registered for that event
  *
  * Tournament snapshots deliberately preserve historical ratings and names. A
@@ -11,10 +12,11 @@ import type { AppState, Player } from "../models";
  * reproducible from each tournament's stored state.
  */
 interface TournamentLibrary {
-  version: 3;
+  version: 4;
   activeId: string;
   tournaments: Record<string, AppState>;
   players: Record<string, Player>;
+  teams: Record<string, Team>;
 }
 
 const LIBRARY_KEY = "castling.library.v2";
@@ -31,18 +33,28 @@ function readLibrary(): TournamentLibrary | null {
 
     const tournaments = parsed.tournaments || {};
     const players: Record<string, Player> = { ...(parsed.players || {}) };
-    // Version 2 stored players only inside tournaments. Promote each unique
-    // profile into the reusable directory without changing tournament history.
+    const teams: Record<string, Team> = { ...(parsed.teams || {}) };
+    // Older libraries stored profiles only inside tournaments. Promote each
+    // unique player and team without changing historical tournament snapshots.
     for (const event of Object.values(tournaments)) {
       for (const profile of event.players || []) {
         if (!players[profile.id]) players[profile.id] = { ...profile };
       }
+      for (const team of event.teams || []) {
+        if (!teams[team.id])
+          teams[team.id] = {
+            ...team,
+            emoji: team.emoji || "🛡️",
+            active: false,
+          };
+      }
     }
     return {
-      version: 3,
+      version: 4,
       activeId: parsed.activeId || Object.keys(tournaments)[0] || "",
       tournaments,
       players,
+      teams,
     };
   } catch {
     return null;
@@ -54,7 +66,7 @@ function writeLibrary(library: TournamentLibrary): void {
 }
 
 function blankLibrary(activeId = ""): TournamentLibrary {
-  return { version: 3, activeId, tournaments: {}, players: {} };
+  return { version: 4, activeId, tournaments: {}, players: {}, teams: {} };
 }
 
 export const storage = {
@@ -77,6 +89,12 @@ export const storage = {
         migrated.tournaments[legacy.tournament.id] = legacy;
         for (const profile of legacy.players)
           migrated.players[profile.id] = { ...profile };
+        for (const team of legacy.teams || [])
+          migrated.teams[team.id] = {
+            ...team,
+            emoji: team.emoji || "🛡️",
+            active: false,
+          };
         writeLibrary(migrated);
         localStorage.removeItem(LEGACY_KEY);
       }
@@ -93,6 +111,12 @@ export const storage = {
     library.tournaments[state.tournament.id] = state;
     for (const profile of state.players)
       library.players[profile.id] = { ...profile };
+    for (const team of state.teams || [])
+      library.teams[team.id] ||= {
+        ...team,
+        emoji: team.emoji || "🛡️",
+        active: false,
+      };
     writeLibrary(library);
     window.dispatchEvent(new CustomEvent("castling:saved"));
   },
@@ -109,6 +133,49 @@ export const storage = {
     return Object.values(readLibrary()?.players || {}).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
+  },
+
+  /** Return reusable team profiles independently of tournament registration. */
+  listTeams(): Team[] {
+    return Object.values(readLibrary()?.teams || {}).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  },
+
+  /** Create or update one reusable team and its unfinished registrations. */
+  saveTeam(profile: Team): void {
+    const library = readLibrary() || blankLibrary();
+    const reusable = {
+      ...profile,
+      emoji: profile.emoji || "🛡️",
+      active: false,
+    };
+    library.teams[profile.id] = reusable;
+    for (const event of Object.values(library.tournaments)) {
+      if (event.tournament.finished) continue;
+      const index = (event.teams || []).findIndex(
+        (team) => team.id === profile.id,
+      );
+      if (index >= 0)
+        event.teams![index] = {
+          ...reusable,
+          active: event.teams![index].active,
+        };
+    }
+    writeLibrary(library);
+  },
+
+  /** Delete a reusable team only when no tournament snapshot references it. */
+  removeTeam(id: string): boolean {
+    const library = readLibrary();
+    if (!library) return true;
+    const inUse = Object.values(library.tournaments).some((event) =>
+      (event.teams || []).some((team) => team.id === id),
+    );
+    if (inUse) return false;
+    delete library.teams[id];
+    writeLibrary(library);
+    return true;
   },
 
   /** Create or update one global profile and active, unfinished registrations. */
