@@ -29,12 +29,9 @@ function federation(country: string): string {
 
 function reportTitle(s: AppState): string {
   const round = s.rounds.at(-1)?.number || 0;
-  const missing =
-    s.rounds.at(-1)?.pairings.filter((game) => game.result === null).length ||
-    0;
   if (s.tournament.finished) return "Final Rank";
   if (round === 0) return "Starting Rank";
-  return `Rank after Round ${round}${missing ? ` (${missing} results missing)` : ""}`;
+  return `Rank after Round ${round}`;
 }
 
 /** Build a print-ready report entirely in the browser. */
@@ -121,15 +118,13 @@ export function makePdf(
     if (teamFormat) {
       const boardOnly = s.tournament.teamScoring === "board-points";
       const positions = boardOnly
-        ? [10, 24, 36, 91, 157, 177, 192, 207, 224, 246]
-        : [10, 24, 36, 84, 146, 164, 178, 192, 206, 222, 240];
+        ? [10, 26, 94, 164, 182, 200, 222, 246]
+        : [10, 26, 86, 150, 168, 184, 200, 222, 242];
       row(
         [
           "Rk.",
-          "SNo",
           "Team",
           "Roster",
-          "Games",
           "+",
           "=",
           "-",
@@ -144,15 +139,11 @@ export function makePdf(
         s.rounds,
         s.tournament.teamScoring || "2-1-0",
       ).forEach((entry) => {
-        const startNumber =
-          (s.teams || []).findIndex((team) => team.id === entry.team.id) + 1;
         row(
           [
             String(entry.rank),
-            String(startNumber),
             entry.team.name,
             entry.team.playerIds.map((id) => find(s, id)).join(", "),
-            String(entry.wins + entry.draws + entry.losses),
             String(entry.wins),
             String(entry.draws),
             String(entry.losses),
@@ -169,22 +160,19 @@ export function makePdf(
         ? s.tournament.ratingChanges
         : undefined;
       const positions = ratingChanges
-        ? [10, 24, 35, 82, 96, 110, 127, 137, 147, 157, 171, 188, 226, 242, 258]
-        : [10, 24, 35, 87, 101, 116, 134, 145, 156, 167, 181, 218, 237, 256];
+        ? [10, 25, 80, 97, 116, 135, 147, 159, 177, 205, 226, 247]
+        : [10, 25, 82, 100, 120, 140, 153, 166, 201, 225, 249];
       row(
         [
           "Rk.",
-          "SNo",
           "Name",
           "FED",
           "Rtg",
-          "Games",
+          "Pts.",
           "+",
           "=",
           "-",
-          "Pts.",
           ...(ratingChanges ? ["ΔRtg"] : []),
-          "Club/City",
           "TB1",
           "TB2",
           "TB3",
@@ -192,23 +180,18 @@ export function makePdf(
         positions,
       );
       standings(s.players, s.rounds).forEach((entry) => {
-        const startNumber =
-          s.players.findIndex((player) => player.id === entry.player.id) + 1;
         const change = ratingChanges?.[entry.player.id] || 0;
         row(
           [
             String(entry.rank),
-            String(startNumber),
             entry.player.name,
             federation(entry.player.country),
             String(entry.player.rating || 0),
-            String(entry.wins + entry.draws + entry.losses),
+            entry.points.toFixed(1),
             String(entry.wins),
             String(entry.draws),
             String(entry.losses),
-            entry.points.toFixed(1),
             ...(ratingChanges ? [`${change > 0 ? "+" : ""}${change}`] : []),
-            entry.player.club || "—",
             entry.buchholz.toFixed(1),
             entry.buchholzCut.toFixed(1),
             entry.sonneborn.toFixed(1),
@@ -302,6 +285,180 @@ export async function makeImage(
   }
   return data;
 }
+/** Escape user-controlled text before placing it in an OOXML worksheet. */
+function xlsxXml(value: unknown): string {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function xlsxColumn(index: number): string {
+  let result = "";
+  for (let value = index + 1; value; value = Math.floor((value - 1) / 26))
+    result = String.fromCharCode(65 + ((value - 1) % 26)) + result;
+  return result;
+}
+
+/** Create a standards-compliant Excel workbook without a server dependency. */
+export async function makeXlsx(s: AppState, save = true): Promise<Blob> {
+  if (!s.tournament.finished)
+    throw new Error("Final results must be published before Excel export.");
+
+  const teamFormat = s.tournament.type.startsWith("Team");
+  const boardOnly = s.tournament.teamScoring === "board-points";
+  const ratingChanges = s.tournament.rated
+    ? s.tournament.ratingChanges
+    : undefined;
+  const headers = teamFormat
+    ? [
+        "Rank",
+        "Team",
+        "Roster",
+        "Wins",
+        "Draws",
+        "Losses",
+        ...(boardOnly ? [] : ["Match Points"]),
+        "Board Points",
+        "TB1 · Team Buchholz",
+      ]
+    : [
+        "Rank",
+        "Name",
+        "Federation",
+        "Rating",
+        "Points",
+        "Wins",
+        "Draws",
+        "Losses",
+        ...(ratingChanges ? ["Rating Change"] : []),
+        "TB1 · Buchholz",
+        "TB2 · Buchholz Cut 1",
+        "TB3 · Sonneborn-Berger",
+      ];
+  const values: Array<Array<string | number>> = teamFormat
+    ? teamStandings(
+        s.teams || [],
+        s.rounds,
+        s.tournament.teamScoring || "2-1-0",
+      ).map((entry) => [
+        entry.rank,
+        entry.team.name,
+        entry.team.playerIds.map((id) => find(s, id)).join(", "),
+        entry.wins,
+        entry.draws,
+        entry.losses,
+        ...(boardOnly ? [] : [entry.matchPoints]),
+        entry.boardPoints,
+        entry.buchholz,
+      ])
+    : standings(s.players, s.rounds).map((entry) => [
+        entry.rank,
+        entry.player.name,
+        federation(entry.player.country),
+        entry.player.rating || 0,
+        entry.points,
+        entry.wins,
+        entry.draws,
+        entry.losses,
+        ...(ratingChanges ? [ratingChanges[entry.player.id] || 0] : []),
+        entry.buchholz,
+        entry.buchholzCut,
+        entry.sonneborn,
+      ]);
+
+  const cell = (
+    value: string | number,
+    row: number,
+    column: number,
+    style: number,
+  ) => {
+    const reference = `${xlsxColumn(column)}${row}`;
+    return typeof value === "number"
+      ? `<c r="${reference}" s="${style}"><v>${Number.isFinite(value) ? value : 0}</v></c>`
+      : `<c r="${reference}" s="${style}" t="inlineStr"><is><t xml:space="preserve">${xlsxXml(value)}</t></is></c>`;
+  };
+  const row = (
+    rowNumber: number,
+    columns: Array<string | number>,
+    style: number,
+    height?: number,
+  ) =>
+    `<row r="${rowNumber}"${height ? ` ht="${height}" customHeight="1"` : ""}>${columns.map((value, column) => cell(value, rowNumber, column, style)).join("")}</row>`;
+  const lastColumn = xlsxColumn(headers.length - 1);
+  const details = [
+    s.tournament.date,
+    s.tournament.venue || "Venue not set",
+    s.tournament.type,
+    `${s.rounds.length} round${s.rounds.length === 1 ? "" : "s"}`,
+    s.tournament.rated ? "Rated" : "Unrated",
+  ].join(" · ");
+  const widths = headers
+    .map((header, index) => {
+      const width =
+        header === "Name" || header === "Team"
+          ? 28
+          : header === "Roster"
+            ? 44
+            : header.includes("Buchholz") || header.includes("Sonneborn")
+              ? 22
+              : 13;
+      return `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`;
+    })
+    .join("");
+  const dataRows = values
+    .map((columns, index) => {
+      const rank = Number(columns[0]);
+      const style = rank === 1 ? 3 : rank === 2 ? 4 : rank === 3 ? 5 : 0;
+      return row(index + 5, columns, style);
+    })
+    .join("");
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths}</cols><sheetData>${row(1, [`${s.tournament.name} · Final Results`], 1, 28)}${row(2, [details], 6, 20)}${row(4, headers, 2, 24)}${dataRows}</sheetData><autoFilter ref="A4:${lastColumn}${Math.max(4, values.length + 4)}"/><mergeCells count="2"><mergeCell ref="A1:${lastColumn}1"/><mergeCell ref="A2:${lastColumn}2"/></mergeCells><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="10"/><name val="Aptos"/></font><font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Aptos Display"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font></fonts><fills count="7"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1C503A"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE6B83F"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9DFDC"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD69A70"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDF3EF"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD4DED8"/></left><right style="thin"><color rgb="FFD4DED8"/></right><top style="thin"><color rgb="FFD4DED8"/></top><bottom style="thin"><color rgb="FFD4DED8"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="6" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment vertical="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+
+  const zip = new JSZip();
+  zip.file(
+    "[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`,
+  );
+  zip.file(
+    "_rels/.rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`,
+  );
+  zip.file(
+    "xl/workbook.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Final Results" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+  );
+  zip.file(
+    "xl/_rels/workbook.xml.rels",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+  );
+  zip.file("xl/worksheets/sheet1.xml", sheet);
+  zip.file("xl/styles.xml", styles);
+  const timestamp = new Date().toISOString();
+  zip.file(
+    "docProps/core.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xlsxXml(s.tournament.name)} Final Results</dc:title><dc:creator>Chest-Tournament Manager</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${timestamp}</dcterms:created></cp:coreProperties>`,
+  );
+  zip.file(
+    "docProps/app.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Chest-Tournament Manager</Application></Properties>`,
+  );
+  const blob = await zip.generateAsync({
+    type: "blob",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  if (save) download(blob, `${slug(s.tournament.name)}-final-results.xlsx`);
+  return blob;
+}
+
 /** Package the event's primary interchange and presentation formats. */
 export async function makeZip(s: AppState, poster: HTMLElement) {
   const z = new JSZip();

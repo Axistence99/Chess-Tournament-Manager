@@ -1,0 +1,35 @@
+{
+  "name": "Chest-Tournament Manager",
+  "short_name": "Chest Manager",
+  "description": "Offline-first chess tournament pairing, scoring, standings, and export manager.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f2efd3",
+  "theme_color": "#1c503a",
+  "categories": ["sports", "productivity", "utilities"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

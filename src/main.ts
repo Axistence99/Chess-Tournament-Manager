@@ -26,7 +26,7 @@ import {
 import { standings } from "./services/standings";
 import { pgn } from "./services/pgnExporter";
 import { calculateRatingChanges, DEFAULT_K_FACTOR } from "./services/rating";
-import { makeImage, makePdf, makeZip } from "./services/exporters";
+import { makeImage, makePdf, makeXlsx, makeZip } from "./services/exporters";
 import { categoryForAge } from "./utils/player";
 import {
   FEDERATIONS,
@@ -52,6 +52,45 @@ import {
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const uid = () => crypto.randomUUID();
+
+/** Chromium's deferred PWA install event is not yet part of TypeScript's DOM lib. */
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
+let deferredInstallPrompt: BeforeInstallPromptEvent | null = null;
+let appWasInstalled = false;
+
+function isStandaloneApp(): boolean {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    Boolean((navigator as Navigator & { standalone?: boolean }).standalone) ||
+    appWasInstalled
+  );
+}
+
+async function requestAppInstall(): Promise<void> {
+  if (isStandaloneApp()) return;
+  if (!deferredInstallPrompt) {
+    toast(
+      "In Android Chrome, open the menu (⋮) and choose Install app or Add to Home screen.",
+      "info",
+    );
+    return;
+  }
+  const prompt = deferredInstallPrompt;
+  deferredInstallPrompt = null;
+  await prompt.prompt();
+  const { outcome } = await prompt.userChoice;
+  toast(
+    outcome === "accepted"
+      ? "Chest-Tournament Manager is being installed."
+      : "Installation was cancelled. You can install later from Settings.",
+    "info",
+  );
+  render();
+}
 
 const TEAM_EMOJI_CATEGORIES = [
   {
@@ -201,7 +240,7 @@ const emptyState = (): AppState => ({
 const PRESET_SEED_KEY = "castling.player-presets.v3";
 const THEME_KEY = "castling.theme.v1";
 const LAYOUT_KEY = "castling.layout.v1";
-type AppTheme = "dark" | "light" | "criterion" | "ggcc";
+type AppTheme = "dark" | "light" | "criterion" | "ggcc" | "ceit";
 type LayoutPreferences = { hideSidebar: boolean; hideTopbar: boolean };
 
 function loadLayoutPreferences(): LayoutPreferences {
@@ -224,12 +263,12 @@ function saveLayoutPreferences(): void {
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(layoutPreferences));
 }
 
-const THEMES: AppTheme[] = ["dark", "light", "criterion", "ggcc"];
+const THEMES: AppTheme[] = ["dark", "light", "criterion", "ggcc", "ceit"];
 let activeTheme: AppTheme = THEMES.includes(
   localStorage.getItem(THEME_KEY) as AppTheme,
 )
   ? (localStorage.getItem(THEME_KEY) as AppTheme)
-  : "dark";
+  : "criterion";
 
 /** Apply the visual theme globally and keep browser chrome in sync. */
 function applyTheme(theme: AppTheme): void {
@@ -247,7 +286,9 @@ function applyTheme(theme: AppTheme): void {
           ? "#1c503a"
           : theme === "ggcc"
             ? "#080b10"
-            : "#0b1210",
+            : theme === "ceit"
+              ? "#090604"
+              : "#0b1210",
     );
   const ggcc = theme === "ggcc";
   document
@@ -560,10 +601,10 @@ function shell(content: string) {
     layoutPreferences.hideSidebar || layoutPreferences.hideTopbar
       ? `<div class="layout-reveal-controls" aria-label="Hidden navigation controls">${layoutPreferences.hideSidebar ? `<button class="icon-btn" data-action="show-sidebar" aria-label="Show left navigation" data-tooltip="Show left navigation">${icon("panel-left-open")}</button>` : ""}${layoutPreferences.hideTopbar ? `<button class="icon-btn" data-action="show-topbar" aria-label="Show top bar" data-tooltip="Show top bar">${icon("panel-top-open")}</button>` : ""}</div>`
       : "";
-  return `<div class="app ${layoutClasses}"><aside class="sidebar"><div class="brand"><img src="${themeLogoPath()}" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.tournament.rated ? "Rated" : "Unrated"} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar"><button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" style="--nav-count:${navigationItems().length}" aria-label="Mobile navigation">${navButtons(true)}</nav>${revealControls}</div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
+  return `<div class="app ${layoutClasses}"><aside class="sidebar"><div class="brand"><img src="${themeLogoPath()}" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.tournament.rated ? "Rated" : "Unrated"} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar">${!isStandaloneApp() && deferredInstallPrompt ? `<button class="btn install-toolbar-btn" data-action="install-app" aria-label="Install Chest-Tournament Manager">${icon("smartphone")}<span class="hide-mobile"> Install</span></button>` : ""}<button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" style="--nav-count:${navigationItems().length}" aria-label="Mobile navigation">${navButtons(true)}</nav>${revealControls}</div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
 }
 function exportMenu() {
-  return `<div class="export-menu"><button class="btn" data-action="restore">${icon("upload")}<span class="hide-mobile"> Restore</span></button><button class="btn primary" data-action="toggle-export">${icon("download")}<span class="export-label">Export</span>${icon("chevron-down", 14)}</button>${exportOpen ? `<div class="dropdown" role="menu"><button data-export="pgn">${icon("file-text")} PGN · Tournament</button><button data-export="pdf-standings">${icon("file-text")} PDF · Standings</button><button data-export="pdf-pairings">${icon("file-text")} PDF · Pairings</button><button data-export="pdf-players">${icon("file-text")} PDF · Player list</button><button data-export="png">${icon("image")} PNG · 1080×1350</button><button data-export="jpg">${icon("image")} JPG · 1920×1080</button><button data-export="zip">${icon("package")} ZIP tournament package</button></div>` : ""}</div>`;
+  return `<div class="export-menu"><button class="btn" data-action="restore">${icon("upload")}<span class="hide-mobile"> Restore</span></button><button class="btn primary" data-action="toggle-export">${icon("download")}<span class="export-label">Export</span>${icon("chevron-down", 14)}</button>${exportOpen ? `<div class="dropdown" role="menu"><button data-export="pgn">${icon("file-text")} PGN · Tournament</button><button data-export="pdf-standings">${icon("file-text")} PDF · Standings</button><button data-export="xlsx-final" ${state.tournament.finished ? "" : 'disabled title="Publish the final ranking to enable Excel export"'}>${icon("sheet")} XLSX · Final results</button><button data-export="pdf-pairings">${icon("file-text")} PDF · Pairings</button><button data-export="pdf-players">${icon("file-text")} PDF · Player list</button><button data-export="png">${icon("image")} PNG · 1080×1350</button><button data-export="jpg">${icon("image")} JPG · 1920×1080</button><button data-export="zip">${icon("package")} ZIP tournament package</button></div>` : ""}</div>`;
 }
 function metrics() {
   const done = gamesDone(),
@@ -597,7 +638,7 @@ function helpView(): string {
   <section id="help-tiebreaks" class="help-section"><div class="help-section-title"><span>${icon("scale", 20)}</span><div><span class="eyebrow">Ranking order</span><h3>Standings & tie-breaks</h3></div></div><p>Individual players are sorted using the following order. The first value that differs decides the higher rank.</p><ol class="help-ranking"><li><span>1</span><div><b>Points</b><p>Total game points earned.</p></div></li><li><span>2</span><div><b>Buchholz</b><p>The sum of all opponents’ final or current point totals. A player who faced stronger-scoring opposition receives the higher value.</p></div></li><li><span>3</span><div><b>Sonneborn–Berger</b><p>The full score of every defeated opponent plus half the score of every drawn opponent.</p></div></li><li><span>4</span><div><b>Wins</b><p>The player with more victories ranks higher.</p></div></li><li><span>5</span><div><b>Rating</b><p>Rating resolves a tie that remains after all competition tie-breaks.</p></div></li></ol><aside class="help-callout rating-formula"><b>Rated tournament Elo</b><p>For each rated game, expected score is E = 1 ÷ (1 + 10<sup>(opponent rating − player rating) ÷ 400</sup>). The change is ΔR = round(${DEFAULT_K_FACTOR} × (actual score − E)). Game changes are zero-sum: points gained by one player are deducted from the opponent. Final changes apply only when the organizer publishes the final ranking; byes, forfeits, and games involving a zero-rated player are excluded.</p></aside><aside class="help-callout"><b>Buchholz Cut 1</b><p>The standings report also displays Buchholz with the lowest opponent score removed. It is an informational field and is not currently used in the automatic ranking order.</p></aside></section>
   <section id="help-teams" class="help-section"><div class="help-section-title"><span>${icon("users", 20)}</span><div><span class="eyebrow">Boards become matches</span><h3>Team tournaments</h3></div></div><div class="help-card-grid help-team-grid"><article class="help-card"><h4>2–1–0 match points</h4><p>A team earns 2 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>3–1–0 match points</h4><p>A team earns 3 for a match win, 1 for a drawn match, and 0 for a loss.</p></article><article class="help-card"><h4>Board points only</h4><p>Teams rank directly by the total points scored across their individual boards.</p></article><article class="help-card"><h4>Bughouse · first win</h4><p>Teams have exactly two players on linked boards. The first teammate to win immediately ends the match and earns 1 team match point; the other board is stopped. If both boards draw, each team earns ½ point.</p></article></div><p>With match-point scoring, teams rank by <b>match points</b>, then <b>board points</b>, then <b>team Buchholz</b>, then team name. With board-points-only scoring, board points are primary. Team Buchholz sums the primary scores of all opposing teams.</p></section>
   <section id="help-shortcuts" class="help-section"><div class="help-section-title"><span>${icon("keyboard", 20)}</span><div><span class="eyebrow">Faster controls</span><h3>Keyboard shortcuts</h3></div></div><p>Use these shortcuts with a desktop or external keyboard. On macOS, use Command instead of Control.</p><div class="shortcut-list"><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>P</kbd></span><b>Toggle Projector mode</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>L</kbd></span><b>Show or hide left navigation</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>T</kbd></span><b>Show or hide the top bar</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>H</kbd></span><b>Open Help</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>D</kbd></span><b>Open Dashboard</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>A</kbd></span><b>Open Appearance & layout</b></div><div><span><kbd>Ctrl/⌘</kbd><i>+</i><kbd>Alt</kbd><i>+</i><kbd>N</kbd></span><b>Create a player profile</b></div><div><span><kbd>Esc</kbd></span><b>Close a dialog or Projector mode</b></div></div><aside class="help-callout"><b>Navigation safety</b><p>The left and top bars can always be restored with the same shortcut, even when their floating restore controls are hidden or out of view.</p></aside></section>
-  <section id="help-tools" class="help-section"><div class="help-section-title"><span>${icon("wrench", 20)}</span><div><span class="eyebrow">Presentation & safekeeping</span><h3>Tools, exports & local data</h3></div></div><div class="help-definition-list"><div><b>Projector mode</b><p>Cycles through standings, competition details, and the tournament overview. Round Robin events show their crosstable; Knockout events show the bracket. Previous and Next controls are also available.</p></div><div><b>Player results</b><p>Select a player name in standings or results to open their complete round-by-round tournament record.</p></div><div><b>Exports</b><p>Download PGN, PDF reports, CSV data, images, JSON backups, or a ZIP tournament package from the top toolbar.</p></div><div><b>Backup and restore</b><p>JSON backups preserve tournament data and can be imported later or moved to another browser.</p></div><div><b>Local autosave</b><p>Every action is saved in this browser using local storage. No account or internet connection is required after the app is cached.</p></div><div><b>Multiple tournaments</b><p>Use the tournament switcher in the top bar to create, open, or remove locally stored events.</p></div></div><aside class="help-callout warning"><b>Protect your records</b><p>Browser data can be cleared by device cleanup or privacy settings. Export a JSON backup regularly, especially before removing a tournament.</p></aside></section>
+  <section id="help-tools" class="help-section"><div class="help-section-title"><span>${icon("wrench", 20)}</span><div><span class="eyebrow">Presentation & safekeeping</span><h3>Tools, exports & local data</h3></div></div><div class="help-definition-list"><div><b>Projector mode</b><p>Cycles through standings, competition details, and the tournament overview. Round Robin events show their crosstable; Knockout events show the bracket. Previous and Next controls are also available.</p></div><div><b>Player results</b><p>Select a player name in standings or results to open their complete round-by-round tournament record.</p></div><div><b>Exports</b><p>Download PGN, PDF reports, final-results Excel workbooks, CSV data, images, JSON backups, or a ZIP tournament package from the top toolbar.</p></div><div><b>Backup and restore</b><p>JSON backups preserve tournament data and can be imported later or moved to another browser.</p></div><div><b>Local autosave</b><p>Every action is saved in this browser using local storage. No account or internet connection is required after the app is cached.</p></div><div><b>Install on Android</b><p>Open Appearance settings and select Install app. If Chrome does not show its prompt, use Chrome’s ⋮ menu and choose Install app or Add to Home screen.</p></div><div><b>Multiple tournaments</b><p>Use the tournament switcher in the top bar to create, open, or remove locally stored events.</p></div></div><aside class="help-callout warning"><b>Protect your records</b><p>Browser data can be cleared by device cleanup or privacy settings. Export a JSON backup regularly, especially before removing a tournament.</p></aside></section>
 </div></div></section>`;
 }
 
@@ -711,6 +752,7 @@ function creationPage() {
       <div class="toolbar creation-tools">
         <button class="btn" data-action="restore">${icon("upload")} Import backup</button>
         <button class="btn" data-action="app-settings">${icon("palette")} Theme</button>
+        ${!isStandaloneApp() ? `<button class="btn install-app-btn" data-action="install-app">${icon("smartphone")} Install app</button>` : ""}
       </div>
     </section>
     <section class="creation-card" aria-labelledby="create-title">
@@ -1231,17 +1273,18 @@ function countryFlag(country: string): string {
 
 function rankingHeading(): string {
   const round = currentRound()?.number || 0;
-  const missing =
-    currentRound()?.pairings.filter((game) => game.result === null).length || 0;
   if (state.tournament.finished) return "Official Final Ranking";
   if (round === 0) return "Starting Rank";
-  return `Rank after Round ${round}${missing ? ` (${missing} results missing)` : ""}`;
+  return `Rank after Round ${round}`;
 }
 
-function rankingPlacement(rank: number): string {
+function rankingPlacement(
+  rank: number,
+  showFinalCrown = state.tournament.finished,
+): string {
   const labels = ["Champion", "First runner-up", "Second runner-up"];
   const crown =
-    state.tournament.finished && rank <= 3
+    showFinalCrown && rank <= 3
       ? `<span class="ranking-crown crown-${rank}" role="img" aria-label="${labels[rank - 1]}">${icon("crown", 16)}</span>`
       : "";
   return `<span class="rank-placement">${crown}<span>${rank}</span></span>`;
@@ -1250,13 +1293,15 @@ function rankingPlacement(rank: number): string {
 function standingsTable(
   rows = standings(state.players, state.rounds),
   includeReportHeading = false,
+  ratingRounds = state.rounds,
+  showFinalCrowns = state.tournament.finished,
 ) {
   const details = `${state.tournament.name} · ${state.tournament.venue || "Venue not set"} · ${state.tournament.date} · ${state.tournament.type} · ${state.tournament.rated ? "Rated" : "Unrated"} · ${state.tournament.timeControl}`;
   const ratingChanges = state.tournament.rated
     ? state.tournament.ratingChanges ||
       calculateRatingChanges(
         state.players,
-        state.rounds,
+        ratingRounds,
         DEFAULT_K_FACTOR,
         state.tournament.startingRatings,
       )
@@ -1270,18 +1315,13 @@ function standingsTable(
     includeReportHeading
       ? `<header class="ranking-heading"><span class="eyebrow">Official tournament report</span><h3>${h(rankingHeading())}</h3><p>${h(details)}</p></header>`
       : ""
-  }<div class="table-wrap"><table class="ranking-table individual-ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th>Name</th><th>FED</th><th>Rtg</th><th>Games</th><th title="Wins">+</th><th title="Draws">=</th><th title="Losses">−</th><th>Pts.</th>${ratingChanges ? `<th title="${state.tournament.finished ? "Final" : "Projected"} Elo change">ΔRtg</th>` : ""}<th>Club/City</th><th title="Buchholz">TB1</th><th title="Buchholz Cut 1">TB2</th><th title="Sonneborn-Berger">TB3</th></tr></thead><tbody>${rows
+  }<div class="table-wrap"><table class="ranking-table individual-ranking-table"><thead><tr><th>Rk.</th><th>Name</th><th>FED</th><th>Rtg</th><th>Pts.</th><th title="Wins">+</th><th title="Draws">=</th><th title="Losses">−</th>${ratingChanges ? `<th title="${state.tournament.finished ? "Final" : "Projected"} Elo change">ΔRtg</th>` : ""}<th title="Buchholz">TB1</th><th title="Buchholz Cut 1">TB2</th><th title="Sonneborn-Berger">TB3</th></tr></thead><tbody>${rows
     .map((entry) => {
-      const startNumber =
-        state.players.findIndex((profile) => profile.id === entry.player.id) +
-        1;
-      const games = entry.wins + entry.draws + entry.losses;
-      return `<tr class="medal-${entry.rank}"><td class="rank">${rankingPlacement(entry.rank)}</td><td class="mono">${startNumber}</td><td><button class="ranking-name" data-player="${entry.player.id}">${h(entry.player.name)}</button></td><td class="flag-cell">${countryFlag(entry.player.country)}</td><td class="mono">${entry.player.rating || 0}</td><td>${games}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td><td class="score">${entry.points.toFixed(1)}</td>${ratingChanges ? `<td class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">${ratingChangeText(entry.player.id)}</td>` : ""}<td>${h(entry.player.club || "—")}</td><td>${entry.buchholz.toFixed(1)}</td><td>${entry.buchholzCut.toFixed(1)}</td><td>${entry.sonneborn.toFixed(1)}</td></tr>`;
+      return `<tr class="medal-${entry.rank}"><td class="rank">${rankingPlacement(entry.rank, showFinalCrowns)}</td><td><button class="ranking-name" data-player="${entry.player.id}">${h(entry.player.name)}</button></td><td class="flag-cell">${countryFlag(entry.player.country)}</td><td class="mono">${entry.player.rating || 0}</td><td class="score">${entry.points.toFixed(1)}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td>${ratingChanges ? `<td class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">${ratingChangeText(entry.player.id)}</td>` : ""}<td>${entry.buchholz.toFixed(1)}</td><td>${entry.buchholzCut.toFixed(1)}</td><td>${entry.sonneborn.toFixed(1)}</td></tr>`;
     })
     .join("")}</tbody></table></div><div class="mobile-ranking-list">${rows
     .map((entry) => {
-      const games = entry.wins + entry.draws + entry.losses;
-      return `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${rankingPlacement(entry.rank)}</span><div class="mobile-rank-player"><span><button data-player="${entry.player.id}">${h(entry.player.name)}</button><small>${federationCode(entry.player.country)} · ${entry.player.rating || 0}${ratingChanges ? ` · <span class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">Δ ${ratingChangeText(entry.player.id)}</span>` : ""}${entry.player.club ? ` · ${h(entry.player.club)}` : ""}</small></span></div><div class="mobile-rank-score"><b>${entry.points.toFixed(1)}</b><small>Points</small></div><dl><div><dt>Games</dt><dd>${games}</dd></div><div><dt>+</dt><dd>${entry.wins}</dd></div><div><dt>=</dt><dd>${entry.draws}</dd></div><div><dt>−</dt><dd>${entry.losses}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div><div><dt>TB2</dt><dd>${entry.buchholzCut.toFixed(1)}</dd></div><div><dt>TB3</dt><dd>${entry.sonneborn.toFixed(1)}</dd></div></dl></article>`;
+      return `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${rankingPlacement(entry.rank, showFinalCrowns)}</span><div class="mobile-rank-player"><span><button data-player="${entry.player.id}">${h(entry.player.name)}</button><small>${federationCode(entry.player.country)} · ${entry.player.rating || 0}${ratingChanges ? ` · <span class="rating-change ${ratingChange(entry.player.id) > 0 ? "positive" : ratingChange(entry.player.id) < 0 ? "negative" : ""}">Δ ${ratingChangeText(entry.player.id)}</span>` : ""}</small></span></div><div class="mobile-rank-score"><b>${entry.points.toFixed(1)}</b><small>Points</small></div><dl><div><dt>+</dt><dd>${entry.wins}</dd></div><div><dt>=</dt><dd>${entry.draws}</dd></div><div><dt>−</dt><dd>${entry.losses}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div><div><dt>TB2</dt><dd>${entry.buchholzCut.toFixed(1)}</dd></div><div><dt>TB3</dt><dd>${entry.sonneborn.toFixed(1)}</dd></div></dl></article>`;
     })
     .join("")}</div></section>`;
 }
@@ -1292,21 +1332,18 @@ function teamStandingsTable(
     state.rounds,
     state.tournament.teamScoring || "2-1-0",
   ),
+  showFinalCrowns = state.tournament.finished,
 ) {
   const boardOnly = state.tournament.teamScoring === "board-points";
-  return `<div class="table-wrap"><table class="ranking-table team-ranking-table"><thead><tr><th>Rk.</th><th>SNo</th><th>Team</th><th>Roster</th><th>Games</th><th title="Wins">+</th><th title="Draws">=</th><th title="Losses">−</th>${boardOnly ? "" : "<th>MP</th>"}<th>BP</th><th title="Team Buchholz">TB1</th></tr></thead><tbody>${rows
+  return `<div class="table-wrap"><table class="ranking-table team-ranking-table"><thead><tr><th>Rk.</th><th>Team</th><th>Roster</th><th title="Wins">+</th><th title="Draws">=</th><th title="Losses">−</th>${boardOnly ? "" : "<th>MP</th>"}<th>BP</th><th title="Team Buchholz">TB1</th></tr></thead><tbody>${rows
     .map((entry) => {
-      const startNumber =
-        (state.teams || []).findIndex((team) => team.id === entry.team.id) + 1;
-      const games = entry.wins + entry.draws + entry.losses;
-      return `<tr class="medal-${entry.rank}"><td class="rank">${rankingPlacement(entry.rank)}</td><td class="mono">${startNumber}</td><td><span class="team-table-team">${teamMark(entry.team, "team-table-mark")}<b>${h(entry.team.name)}</b></span></td><td>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(", ")}</td><td>${games}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td>${boardOnly ? "" : `<td class="score">${entry.matchPoints}</td>`}<td class="score">${entry.boardPoints.toFixed(1)}</td><td>${entry.buchholz.toFixed(1)}</td></tr>`;
+      return `<tr class="medal-${entry.rank}"><td class="rank">${rankingPlacement(entry.rank, showFinalCrowns)}</td><td><span class="team-table-team">${teamMark(entry.team, "team-table-mark")}<b>${h(entry.team.name)}</b></span></td><td>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(", ")}</td><td>${entry.wins}</td><td>${entry.draws}</td><td>${entry.losses}</td>${boardOnly ? "" : `<td class="score">${entry.matchPoints}</td>`}<td class="score">${entry.boardPoints.toFixed(1)}</td><td>${entry.buchholz.toFixed(1)}</td></tr>`;
     })
     .join(
       "",
     )}</tbody></table></div><div class="mobile-ranking-list team-mobile-ranking">${rows
     .map((entry) => {
-      const games = entry.wins + entry.draws + entry.losses;
-      return `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${rankingPlacement(entry.rank)}</span><div class="mobile-rank-player">${teamMark(entry.team)}<span><b>${h(entry.team.name)}</b><small>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(" · ")}</small></span></div><div class="mobile-rank-score"><b>${boardOnly ? entry.boardPoints.toFixed(1) : entry.matchPoints}</b><small>${boardOnly ? "BP" : "MP"}</small></div><dl><div><dt>Games</dt><dd>${games}</dd></div><div><dt>+</dt><dd>${entry.wins}</dd></div><div><dt>=</dt><dd>${entry.draws}</dd></div><div><dt>−</dt><dd>${entry.losses}</dd></div><div><dt>BP</dt><dd>${entry.boardPoints.toFixed(1)}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div></dl></article>`;
+      return `<article class="mobile-rank-card medal-${entry.rank}"><span class="mobile-rank-number">${rankingPlacement(entry.rank, showFinalCrowns)}</span><div class="mobile-rank-player">${teamMark(entry.team)}<span><b>${h(entry.team.name)}</b><small>${entry.team.playerIds.map((id) => h(player(id)?.name || "Unknown")).join(" · ")}</small></span></div><div class="mobile-rank-score"><b>${boardOnly ? entry.boardPoints.toFixed(1) : entry.matchPoints}</b><small>${boardOnly ? "BP" : "MP"}</small></div><dl><div><dt>+</dt><dd>${entry.wins}</dd></div><div><dt>=</dt><dd>${entry.draws}</dd></div><div><dt>−</dt><dd>${entry.losses}</dd></div><div><dt>BP</dt><dd>${entry.boardPoints.toFixed(1)}</dd></div><div><dt>TB1</dt><dd>${entry.buchholz.toFixed(1)}</dd></div></dl></article>`;
     })
     .join("")}</div>`;
 }
@@ -1322,7 +1359,10 @@ function finalResultsBanner(
   teamEvent = false,
 ): string {
   const titles = ["Champion", "Runner-up", "Third place"];
-  const trophies = [icon("trophy", 44), icon("trophy", 34), icon("trophy", 34)];
+  const medals = [1, 2, 3].map(
+    (rank) =>
+      `<span class="podium-medal">${icon("medal", rank === 1 ? 48 : 38)}<b class="podium-medal-number">${rank}</b></span>`,
+  );
   const meta = [
     state.tournament.venue || "Venue not set",
     state.tournament.date,
@@ -1333,12 +1373,12 @@ function finalResultsBanner(
   // the center column across themes, cached styles, exports, and screenshots.
   const displayOrder =
     finalists.length >= 3 ? [1, 0, 2] : finalists.length === 2 ? [1, 0] : [0];
-  return `<section class="final-banner"><div class="final-banner-head"><span class="final-kicker"><i></i>${teamEvent ? "Official team results" : "Official final results"}<i></i></span><h2>${h(state.tournament.name)}</h2><p>${meta.map(h).join(" · ")}</p></div><div class="podium">${displayOrder
+  return `<section class="final-banner"><div class="final-banner-head"><span class="final-kicker"><i></i>${teamEvent ? "Official team results" : "Official final results"}<i></i></span><h2>${h(state.tournament.name)}</h2><p>${meta.map(h).join(" · ")}</p></div><div class="podium-frame"><div class="podium">${displayOrder
     .map((index) => {
       const entry = finalists[index];
-      return `<article class="podium-${index + 1}"><span class="podium-rank-badge">${index + 1}</span><div class="podium-emblem" aria-hidden="true">${trophies[index]}</div><small class="podium-title">${titles[index]}</small><div class="podium-entrant">${entry.portrait || ""}${entry.playerId ? `<button data-player="${entry.playerId}">${h(entry.name)}</button>` : `<b>${h(entry.name)}</b>`}</div><strong class="podium-score">${entry.value}<small>${h(entry.unit)}</small></strong>${index === 0 ? '<span class="champion-ribbon">Tournament winner</span>' : ""}</article>`;
+      return `<article class="podium-${index + 1}"><div class="podium-emblem" aria-hidden="true">${medals[index]}</div><small class="podium-title">${titles[index]}</small><div class="podium-entrant">${entry.portrait || ""}${entry.playerId ? `<button data-player="${entry.playerId}">${h(entry.name)}</button>` : `<b>${h(entry.name)}</b>`}</div><strong class="podium-score">${entry.value}<small>${h(entry.unit)}</small></strong>${index === 0 ? '<span class="champion-ribbon">Tournament winner</span>' : ""}</article>`;
     })
-    .join("")}</div></section>`;
+    .join("")}</div></div></section>`;
 }
 
 function teamStandingsView() {
@@ -1365,7 +1405,7 @@ function teamStandingsView() {
         true,
       )
     : "";
-  return `${podium}<div class="section-head"><div><span class="eyebrow">${final ? "Certified team results" : "Live team leaderboard"}</span><h2>${final ? "Final Rank" : "Team standings"}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}<button class="btn" data-action="projector">${icon("presentation")} Projector</button></div></div>${rows.length ? teamStandingsTable(rows) : empty("♜", "Standings await", "Register teams and complete matches to see rankings.", "Manage teams", "go-teams")}`;
+  return `${podium}<div class="section-head"><div><span class="eyebrow">${final ? "Certified team results" : "Live team leaderboard"}</span><h2>${final ? "Final Rank" : "Team standings"}</h2></div>${canEndTournament() ? `<div class="toolbar"><button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button></div>` : ""}</div>${rows.length ? teamStandingsTable(rows) : empty("♜", "Standings await", "Register teams and complete matches to see rankings.", "Manage teams", "go-teams")}`;
 }
 
 function standingsView() {
@@ -1382,7 +1422,7 @@ function standingsView() {
         })),
       )
     : "";
-  return `${podium}<div class="section-head"><div><span class="eyebrow">${final ? "Certified results" : "Live leaderboard"}</span><h2>${final ? "Final Rank" : "Standings"}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}<button class="btn" data-action="projector">${icon("presentation")} Projector</button><button class="btn" data-export="pdf-standings">${icon("printer")} PDF</button></div></div>${rows.length ? standingsTable(rows, true) : empty("♛", "Standings await", "Add players and complete games to see live rankings.", "Manage players", "go-players")}`;
+  return `${podium}<div class="section-head"><div><span class="eyebrow">${final ? "Certified results" : "Live leaderboard"}</span><h2>${final ? "Final Rank" : "Standings"}</h2></div>${canEndTournament() ? `<div class="toolbar"><button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button></div>` : ""}</div>${rows.length ? standingsTable(rows, true) : empty("♛", "Standings await", "Add players and complete games to see live rankings.", "Manage players", "go-players")}`;
 }
 function resultNotation(result: GameResult): string {
   if (!result) return "Pending";
@@ -1437,7 +1477,30 @@ function historyView() {
     ).length || 0;
   const draws = r?.pairings.filter((game) => game.result === "½-½").length || 0;
   const byes = r?.pairings.filter((game) => game.result === "BYE").length || 0;
-  return `<div class="section-head"><div><span class="eyebrow">Permanent archive</span><h2>Round results</h2><p class="muted">Review every pairing and recorded result from each round.</p></div><div class="toolbar">${state.rounds.length && !state.tournament.finished ? `<button class="btn danger" data-action="undo-round">${icon("undo-2")} Undo last round</button>` : ""}</div></div><div class="round-tabs" aria-label="Choose round">${state.rounds.map((x) => `<button class="btn ${x.number === n ? "primary" : ""}" data-round="${x.number}" aria-pressed="${x.number === n}">Round ${x.number}<small>${isComplete(x) ? "Complete" : "Open"}</small></button>`).join("")}</div>${r ? `<section class="round-result-summary"><div><span class="eyebrow">Selected round</span><h3>Round ${r.number} results</h3></div><span><b>${completed}</b>/${r.pairings.length} recorded</span><span><b>${decisive}</b> decisive</span><span><b>${draws}</b> draws</span>${byes ? `<span><b>${byes}</b> byes</span>` : ""}</section>${archivedRoundBoards(r)}${!isComplete(r) && r !== currentRound() ? `<button class="btn" data-action="reopen-round" data-round="${r.number}" style="margin-top:12px">Reopen unfinished round</button>` : ""}` : empty("♜", "No round results yet", "Pairings and results from every round will remain available here.", "Go to pairings", "go-pairings")}`;
+  const roundsThroughSelection = r
+    ? state.rounds.filter((round) => round.number <= r.number)
+    : [];
+  const showFinalCrowns = Boolean(
+    r && state.tournament.finished && r.number === state.rounds.at(-1)?.number,
+  );
+  const rankingAfterRound = r
+    ? isTeamTournament()
+      ? teamStandingsTable(
+          teamStandings(
+            state.teams || [],
+            roundsThroughSelection,
+            state.tournament.teamScoring || "2-1-0",
+          ),
+          showFinalCrowns,
+        )
+      : standingsTable(
+          standings(state.players, roundsThroughSelection),
+          false,
+          roundsThroughSelection,
+          showFinalCrowns,
+        )
+    : "";
+  return `<div class="section-head"><div><span class="eyebrow">Permanent archive</span><h2>Round results</h2><p class="muted">Review every pairing, recorded result, and ranking after each round.</p></div><div class="toolbar">${state.rounds.length && !state.tournament.finished ? `<button class="btn danger" data-action="undo-round">${icon("undo-2")} Undo last round</button>` : ""}</div></div><div class="round-tabs" aria-label="Choose round">${state.rounds.map((x) => `<button class="btn ${x.number === n ? "primary" : ""}" data-round="${x.number}" aria-pressed="${x.number === n}">Round ${x.number}<small>${isComplete(x) ? "Complete" : "Open"}</small></button>`).join("")}</div>${r ? `<section class="round-result-summary"><div><span class="eyebrow">Selected round</span><h3>Round ${r.number} results</h3></div><span><b>${completed}</b>/${r.pairings.length} recorded</span><span><b>${decisive}</b> decisive</span><span><b>${draws}</b> draws</span>${byes ? `<span><b>${byes}</b> byes</span>` : ""}</section>${archivedRoundBoards(r)}${!isComplete(r) && r !== currentRound() ? `<button class="btn" data-action="reopen-round" data-round="${r.number}" style="margin-top:12px">Reopen unfinished round</button>` : ""}<section class="round-standings"><div class="section-head compact"><div><span class="eyebrow">Ranking snapshot</span><h3>Standings after Round ${r.number}</h3></div></div>${rankingAfterRound}</section>` : empty("♜", "No round results yet", "Pairings and results from every round will remain available here.", "Go to pairings", "go-pairings")}`;
 }
 function poster() {
   const table = isTeamTournament()
@@ -1497,6 +1560,12 @@ function appearanceSettings() {
       description:
         "GMA Gambit Chess Club black, championship gold, and crisp white.",
     },
+    {
+      id: "ceit",
+      name: "CEIT",
+      description:
+        "University Games black, tiger orange, molten gold, and warm ivory.",
+    },
   ];
   return `<div class="modal-backdrop"><section class="modal appearance-modal" role="dialog" aria-modal="true" aria-labelledby="appearance-title" data-modal><div class="modal-head"><div><span class="eyebrow">Application settings</span><h2 id="appearance-title">Appearance & layout</h2><p class="muted">Preferences are saved on this device and apply to every tournament.</p></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><section class="appearance-setting-group" aria-labelledby="theme-setting-title"><h3 id="theme-setting-title">Choose a theme</h3><div class="theme-options" role="radiogroup" aria-label="Color theme">${choices
     .map(
@@ -1505,7 +1574,7 @@ function appearanceSettings() {
     )
     .join(
       "",
-    )}</div></section><section class="appearance-setting-group layout-settings" aria-labelledby="layout-setting-title"><div><h3 id="layout-setting-title">Navigation layout</h3><p class="muted">Hide desktop navigation bars for a distraction-free workspace. Floating restore controls remain available.</p></div><div class="layout-setting-options"><button type="button" class="layout-setting-option" data-layout-toggle="sidebar" role="switch" aria-checked="${layoutPreferences.hideSidebar}"><span class="layout-setting-icon">${icon("panel-left")}</span><span><b>Hide left navigation</b><small>Expand tournament content across the full width.</small></span><span class="switch-control" aria-hidden="true"><i></i></span></button><button type="button" class="layout-setting-option" data-layout-toggle="topbar" role="switch" aria-checked="${layoutPreferences.hideTopbar}"><span class="layout-setting-icon">${icon("panel-top")}</span><span><b>Hide top bar</b><small>Remove tournament, theme, backup, and export controls.</small></span><span class="switch-control" aria-hidden="true"><i></i></span></button></div></section></section></div>`;
+    )}</div></section><section class="appearance-setting-group layout-settings" aria-labelledby="layout-setting-title"><div><h3 id="layout-setting-title">Navigation layout</h3><p class="muted">Hide desktop navigation bars for a distraction-free workspace. Floating restore controls remain available.</p></div><div class="layout-setting-options"><button type="button" class="layout-setting-option" data-layout-toggle="sidebar" role="switch" aria-checked="${layoutPreferences.hideSidebar}"><span class="layout-setting-icon">${icon("panel-left")}</span><span><b>Hide left navigation</b><small>Expand tournament content across the full width.</small></span><span class="switch-control" aria-hidden="true"><i></i></span></button><button type="button" class="layout-setting-option" data-layout-toggle="topbar" role="switch" aria-checked="${layoutPreferences.hideTopbar}"><span class="layout-setting-icon">${icon("panel-top")}</span><span><b>Hide top bar</b><small>Remove tournament, theme, backup, and export controls.</small></span><span class="switch-control" aria-hidden="true"><i></i></span></button></div></section><section class="appearance-setting-group install-settings" aria-labelledby="install-setting-title"><div class="install-setting-copy"><span class="layout-setting-icon">${icon(isStandaloneApp() ? "circle-check" : "smartphone")}</span><div><h3 id="install-setting-title">${isStandaloneApp() ? "App installed" : "Install on Android"}</h3><p class="muted">${isStandaloneApp() ? "Chest-Tournament Manager is running as an installed app." : deferredInstallPrompt ? "Add the app to your home screen and app drawer for quick, full-screen access." : "In Android Chrome, open the menu (⋮), then choose Install app or Add to Home screen."}</p></div></div>${!isStandaloneApp() ? `<button type="button" class="btn primary install-app-btn" data-action="install-app">${icon("download")} Install app</button>` : ""}<small class="install-offline-note">${icon("wifi-off", 14)} Tournament tools remain available offline after the first successful load.</small></section></section></div>`;
 }
 
 function playerForm() {
@@ -1545,7 +1614,7 @@ function playerForm() {
   </div>`;
 }
 function emojiPicker(selected: string): string {
-  return `<section class="emoji-picker" aria-labelledby="team-emoji-title"><div class="emoji-category-tabs" role="tablist" aria-label="Emoji categories">${TEAM_EMOJI_CATEGORIES.map((category, index) => `<button type="button" data-emoji-category="${category.id}" class="${index === 0 ? "active" : ""}" role="tab" aria-selected="${index === 0}" aria-label="${category.label}">${category.icon}</button>`).join("")}</div><label class="emoji-search">${icon("search", 16)}<input id="team-emoji-search" type="search" placeholder="Search emojis" aria-label="Search team emojis"></label><div class="emoji-category-label" id="team-emoji-title">${TEAM_EMOJI_CATEGORIES[0].label}</div><div class="emoji-grid" role="listbox" aria-label="Choose a team emoji">${TEAM_EMOJI_CATEGORIES.flatMap((category) => category.emojis.map(([emoji, keywords]) => `<button type="button" data-team-emoji="${emoji}" data-emoji-group="${category.id}" data-emoji-search="${h(`${category.label} ${keywords}`.toLowerCase())}" role="option" aria-selected="${selected === emoji}" class="${selected === emoji ? "selected" : ""}" aria-label="${h(keywords)}" ${category.id === TEAM_EMOJI_CATEGORIES[0].id ? "" : "hidden"}>${emoji}</button>`)).join("")}</div><div class="emoji-selection"><span id="team-emoji-preview" role="img" aria-label="Selected team icon">${h(selected)}</span><span id="team-emoji-label">Selected team emoji</span><button type="button" class="btn" data-action="clear-team-emoji">Clear</button></div></section>`;
+  return `<div class="emoji-picker-control"><button type="button" class="emoji-picker-trigger" data-action="toggle-team-emoji-picker" aria-expanded="false" aria-controls="team-emoji-panel"><span class="team-emoji-preview" role="img" aria-label="Selected team icon">${h(selected)}</span><span>Pick an emoji…</span>${icon("chevron-down", 16)}</button><section id="team-emoji-panel" class="emoji-picker" aria-labelledby="team-emoji-title" hidden><div class="emoji-category-tabs" role="tablist" aria-label="Emoji categories">${TEAM_EMOJI_CATEGORIES.map((category, index) => `<button type="button" data-emoji-category="${category.id}" class="${index === 0 ? "active" : ""}" role="tab" aria-selected="${index === 0}" aria-label="${category.label}">${category.icon}</button>`).join("")}</div><label class="emoji-search">${icon("search", 16)}<input id="team-emoji-search" type="search" placeholder="Search emojis" aria-label="Search team emojis"></label><div class="emoji-category-label" id="team-emoji-title">${TEAM_EMOJI_CATEGORIES[0].label}</div><div class="emoji-grid" role="listbox" aria-label="Choose a team emoji">${TEAM_EMOJI_CATEGORIES.flatMap((category) => category.emojis.map(([emoji, keywords]) => `<button type="button" data-team-emoji="${emoji}" data-emoji-group="${category.id}" data-emoji-search="${h(`${category.label} ${keywords}`.toLowerCase())}" role="option" aria-selected="${selected === emoji}" class="${selected === emoji ? "selected" : ""}" aria-label="${h(keywords)}" ${category.id === TEAM_EMOJI_CATEGORIES[0].id ? "" : "hidden"}>${emoji}</button>`)).join("")}</div><div class="emoji-selection"><span class="team-emoji-preview" role="img" aria-label="Selected team icon">${h(selected)}</span><span>Selected team emoji</span><button type="button" class="btn" data-action="clear-team-emoji">Clear</button></div></section></div>`;
 }
 
 function teamForm() {
@@ -2110,6 +2179,7 @@ async function doExport(type: string) {
         `${slug(state.tournament.name)}.pgn`,
       );
     else if (type === "pdf-standings") makePdf(state, "standings");
+    else if (type === "xlsx-final") await makeXlsx(state);
     else if (type === "pdf-pairings") makePdf(state, "pairings");
     else if (type === "pdf-players") makePdf(state, "players");
     else if (type === "png" || type === "jpg")
@@ -2142,6 +2212,10 @@ app.addEventListener("click", (e) => {
     "[data-action],[data-view],[data-player],[data-edit-player],[data-delete-player],[data-add-to-tournament],[data-remove-from-tournament],[data-edit-team],[data-delete-team],[data-add-team],[data-remove-team],[data-switch-tournament],[data-delete-tournament],[data-result],[data-round],[data-export],[data-theme-choice],[data-layout-toggle],[data-team-emoji],[data-emoji-category]",
   );
   if (!el) return;
+  if (el.dataset.action === "install-app") {
+    void requestAppInstall();
+    return;
+  }
   if (el.dataset.themeChoice) {
     const theme = el.dataset.themeChoice as AppTheme;
     if (THEMES.includes(theme)) {
@@ -2192,9 +2266,10 @@ app.addEventListener("click", (e) => {
   if (el.dataset.teamEmoji) {
     const value = el.dataset.teamEmoji;
     const input = document.querySelector<HTMLInputElement>("#team-emoji-value");
-    const preview = document.querySelector<HTMLElement>("#team-emoji-preview");
     if (input) input.value = value;
-    if (preview) preview.textContent = value;
+    document
+      .querySelectorAll<HTMLElement>(".team-emoji-preview")
+      .forEach((preview) => (preview.textContent = value));
     document
       .querySelectorAll<HTMLElement>("[data-team-emoji]")
       .forEach((button) => {
@@ -2202,6 +2277,13 @@ app.addEventListener("click", (e) => {
         button.classList.toggle("selected", selected);
         button.setAttribute("aria-selected", String(selected));
       });
+    const panel = document.querySelector<HTMLElement>("#team-emoji-panel");
+    const trigger = document.querySelector<HTMLElement>(
+      '[data-action="toggle-team-emoji-picker"]',
+    );
+    if (panel) panel.hidden = true;
+    trigger?.setAttribute("aria-expanded", "false");
+    trigger?.focus();
     return;
   }
   if (el.dataset.emojiCategory) {
@@ -2516,11 +2598,20 @@ app.addEventListener("click", (e) => {
         : "Tournament ended · final rankings published",
     );
     render();
+  } else if (a === "toggle-team-emoji-picker") {
+    const panel = document.querySelector<HTMLElement>("#team-emoji-panel");
+    if (panel) {
+      panel.hidden = !panel.hidden;
+      el.setAttribute("aria-expanded", String(!panel.hidden));
+      if (!panel.hidden)
+        document.querySelector<HTMLInputElement>("#team-emoji-search")?.focus();
+    }
   } else if (a === "clear-team-emoji") {
     const input = document.querySelector<HTMLInputElement>("#team-emoji-value");
-    const preview = document.querySelector<HTMLElement>("#team-emoji-preview");
     if (input) input.value = "🛡️";
-    if (preview) preview.textContent = "🛡️";
+    document
+      .querySelectorAll<HTMLElement>(".team-emoji-preview")
+      .forEach((preview) => (preview.textContent = "🛡️"));
     document
       .querySelectorAll<HTMLElement>("[data-team-emoji]")
       .forEach((button) => {
@@ -2858,9 +2949,26 @@ window.addEventListener("castling:saved", () => {
   const s = document.querySelector("#save-status");
   if (s) s.textContent = "Saved just now";
 });
+
+// Keep Chromium's one-shot install prompt available for explicit user action.
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event as BeforeInstallPromptEvent;
+  render();
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  appWasInstalled = true;
+  toast("Chest-Tournament Manager was installed successfully.");
+  render();
+});
+window
+  .matchMedia("(display-mode: standalone)")
+  .addEventListener("change", render);
+
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=45").then((registration) => {
+    navigator.serviceWorker.register("./sw.js?v=85").then((registration) => {
       void registration.update();
     });
   });

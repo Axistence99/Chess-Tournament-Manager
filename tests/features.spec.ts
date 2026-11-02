@@ -13,6 +13,42 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("Android PWA install prompt is deferred to an explicit install control", async ({
+  page,
+}) => {
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "./manifest.webmanifest",
+  );
+
+  await page.evaluate(() => {
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    Object.defineProperties(event, {
+      prompt: {
+        value: () => {
+          document.documentElement.dataset.installPrompted = "true";
+          return Promise.resolve();
+        },
+      },
+      userChoice: {
+        value: Promise.resolve({ outcome: "accepted", platform: "web" }),
+      },
+    });
+    window.dispatchEvent(event);
+  });
+
+  const install = page.locator('.topbar [data-action="install-app"]');
+  await expect(install).toBeVisible();
+  await install.click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-install-prompted",
+    "true",
+  );
+
+  await page.evaluate(() => window.dispatchEvent(new Event("appinstalled")));
+  await expect(page.locator('[data-action="install-app"]')).toHaveCount(0);
+});
+
 test("round history, player profile, projector and tournament chooser are interactive", async ({
   page,
 }) => {
@@ -23,6 +59,12 @@ test("round history, player profile, projector and tournament chooser are intera
   ).toBeVisible();
   await expect(page.locator(".archived-board")).toHaveCount(2);
   await expect(page.locator(".archived-result")).toHaveCount(2);
+  await expect(
+    page.getByRole("heading", { name: "Standings after Round 1" }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".content .round-standings .ranking-table tbody tr"),
+  ).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Round PGN" })).toHaveCount(0);
 
   await page.locator('.nav [data-view="players"]').click();
@@ -120,7 +162,7 @@ test("keyboard shortcuts control presentation, layout, and navigation", async ({
   await expect(page.locator("#player-form")).toBeVisible();
 });
 
-test("appearance settings switch and persist all four themes", async ({
+test("appearance settings switch and persist all five themes", async ({
   page,
 }) => {
   await page.locator('.nav [data-view="players"]').click();
@@ -160,6 +202,24 @@ test("appearance settings switch and persist all four themes", async ({
   );
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "ggcc");
+
+  await page.getByRole("button", { name: /Appearance/ }).click();
+  await page.getByRole("radio", { name: /CEIT/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "ceit");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#090604",
+  );
+  await expect(page.locator(".brand img")).toHaveAttribute(
+    "src",
+    "./chest-logo.webp",
+  );
+  await expect(page.locator(".hero")).toHaveCSS(
+    "border-color",
+    "rgb(187, 74, 12)",
+  );
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "ceit");
 
   await page.getByRole("button", { name: /Appearance/ }).click();
   await page.getByRole("radio", { name: /Dark/ }).click();
@@ -386,9 +446,15 @@ test("Bughouse team match ends on the first teammate win", async ({ page }) => {
   await greenTeam.locator(".registration").click();
 
   await page.locator('[data-action="add-team"]').click();
+  const emojiTrigger = page.locator('[data-action="toggle-team-emoji-picker"]');
+  await expect(page.locator(".emoji-picker")).toBeHidden();
+  await emojiTrigger.click();
   await expect(page.locator(".emoji-picker")).toBeVisible();
   await page.locator("#team-emoji-search").fill("dragon");
   await page.locator('[data-team-emoji="🐉"]').click();
+  await expect(page.locator(".emoji-picker")).toBeHidden();
+  await expect(emojiTrigger).toContainText("🐉");
+  await expect(emojiTrigger).toHaveAttribute("aria-expanded", "false");
   await page.locator('#team-form [name="name"]').fill("Gold Bishops");
   for (const profile of teamEvent.players.slice(2, 4)) {
     await page
@@ -432,7 +498,7 @@ test("Bughouse team match ends on the first teammate win", async ({ page }) => {
   ).toHaveCount(2);
   await expect(
     page.locator(".content .team-ranking-table thead"),
-  ).toContainText("Games");
+  ).not.toContainText("Games");
 
   await page.locator('[data-action="choose-tournament"]').click();
   await page.locator('[data-action="new-from-library"]').click();

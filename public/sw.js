@@ -1,8 +1,12 @@
 /** Offline service worker using network-first HTML and cache-first static assets. */
-const CACHE = "chest-tournament-v73";
+const CACHE = "chest-tournament-v85";
 const SHELL = [
   "./",
   "./index.html",
+  "./manifest.webmanifest",
+  "./pwa-192.png",
+  "./pwa-512.png",
+  "./pwa-maskable-512.png",
   "./chest-logo.webp",
   "./ggcc-logo.png",
   "./profiles/hana.webp",

@@ -43,6 +43,34 @@ test("PGN and all PDF reports download with valid signatures", async ({
   }
 });
 
+test("final results export as a valid Excel XLSX workbook", async ({
+  page,
+}) => {
+  await openFixture(page);
+
+  const download = await exportFromMenu(page, "xlsx-final");
+  expect(download.suggestedFilename()).toBe(
+    "qa-championship-final-results.xlsx",
+  );
+  const workbook = await bytes(download);
+  expect(workbook.subarray(0, 2).toString()).toBe("PK");
+  const archive = await JSZip.loadAsync(workbook);
+  expect(Object.keys(archive.files)).toEqual(
+    expect.arrayContaining([
+      "[Content_Types].xml",
+      "xl/workbook.xml",
+      "xl/styles.xml",
+      "xl/worksheets/sheet1.xml",
+    ]),
+  );
+  const sheet = await archive.file("xl/worksheets/sheet1.xml")!.async("string");
+  expect(sheet).toContain("QA Championship · Final Results");
+  expect(sheet).toContain("Points");
+  expect(sheet).toContain("Alpha King");
+  expect(sheet).not.toContain("Club/City");
+  expect(sheet).not.toContain(">Games<");
+});
+
 test("PNG, JPG and tournament ZIP exports are generated in-browser", async ({
   page,
 }) => {

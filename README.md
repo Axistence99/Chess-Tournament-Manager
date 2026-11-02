@@ -14,9 +14,9 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Live standings with Buchholz, Buchholz Cut 1, Sonneborn–Berger, wins, and color counts
 - Rated or unrated tournament selection, with zero-sum Elo updates (K=20) applied once when final rankings are published
 - Reusable player-profile directory with starter profiles, compressed photos, flagged federation selection, CSV import/export, and per-tournament registration
-- PGN, PDF, PNG/JPG, and complete ZIP package export in the browser
+- PGN, PDF, Excel XLSX final results, PNG/JPG, and complete ZIP package export in the browser
 - Projector mode, keyboard navigation, responsive mobile layout, and accessible focus states
-- Persistent Dark, Light, classic green-and-ivory Criterion, and black-and-gold GGCC (GMA Gambit Chess Club) themes
+- Persistent Dark, Light, classic green-and-ivory Criterion, black-and-gold GGCC, and tiger-orange CEIT themes
 - Automatic localStorage persistence, JSON backup and restore
 - Service worker for offline use after the first successful load
 - Relative asset paths and GitHub Pages deployment workflow
@@ -83,6 +83,19 @@ The static site is emitted to `dist/`. No runtime server is required.
 3. Push to `main`, or run the included `Deploy to GitHub Pages` workflow manually.
 
 `vite.config.ts` uses `base: './'`, so assets resolve correctly from project pages and custom domains.
+
+## Install on Android
+
+Chest-Tournament Manager is an installable Progressive Web App (PWA). After deployment over HTTPS:
+
+1. Open the site in **Google Chrome** on Android and allow the first page load to finish.
+2. Select **Install app** in Chest-Tournament Manager, then confirm Chrome's prompt.
+3. If Chrome does not offer the prompt, open its **⋮ menu** and choose **Install app** or **Add to Home screen**.
+4. Launch Chest-Tournament Manager from the home screen or app drawer like any other app.
+
+The app manifest uses relative URLs for GitHub Pages, provides standard and maskable Android icons, and opens in standalone display mode. Its service worker caches the application shell, manifest, icons, and loaded build assets. An internet connection is required for the first successful load; tournament management works offline afterward.
+
+Chrome decides when its native install prompt is available. The app hides install controls automatically when it is already running as an installed app.
 
 ## CSV format
 

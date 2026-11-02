@@ -26,6 +26,129 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("CEIT tiger theme stays contained on a narrow mobile screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.locator('[data-action="app-settings"]').click();
+  await page.getByRole("radio", { name: /CEIT/ }).click();
+
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "ceit");
+  await expect(page.locator(".mobile-nav button.active")).toBeVisible();
+  const design = await page.locator(".hero").evaluate((hero) => ({
+    tigerMark: getComputedStyle(hero, "::after").content,
+    overflow:
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  }));
+  expect(design.tigerMark).toContain("虎");
+  expect(design.overflow).toBeLessThanOrEqual(1);
+});
+
+test("all tournament result views preserve their desktop structure on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+
+  await page.locator('.mobile-nav [data-view="standings"]').click();
+  const podium = page.locator(".podium");
+  await expect(podium.locator("article")).toHaveCount(3);
+  const podiumLayout = await podium.evaluate((element) => {
+    const silver = element.querySelector<HTMLElement>(".podium-2")!;
+    const champion = element.querySelector<HTMLElement>(".podium-1")!;
+    const bronze = element.querySelector<HTMLElement>(".podium-3")!;
+    const boxes = [silver, champion, bronze].map((item) =>
+      item.getBoundingClientRect(),
+    );
+    return {
+      columns: getComputedStyle(element).gridTemplateColumns.split(" ").length,
+      centers: boxes.map((box) => box.x + box.width / 2),
+      bottoms: boxes.map((box) => box.bottom),
+    };
+  });
+  expect(podiumLayout.columns).toBe(3);
+  expect(podiumLayout.centers[0]).toBeLessThan(podiumLayout.centers[1]);
+  expect(podiumLayout.centers[1]).toBeLessThan(podiumLayout.centers[2]);
+  expect(
+    Math.max(...podiumLayout.bottoms) - Math.min(...podiumLayout.bottoms),
+  ).toBeLessThan(1);
+  const medalDiscs = await page
+    .locator(".podium-medal-number")
+    .evaluateAll((items) =>
+      items.map((item) => {
+        const box = item.getBoundingClientRect();
+        return {
+          text: item.textContent,
+          width: box.width,
+          fontSize: Number.parseFloat(getComputedStyle(item).fontSize),
+        };
+      }),
+    );
+  expect(medalDiscs.map((disc) => disc.text).sort()).toEqual(["1", "2", "3"]);
+  expect(
+    medalDiscs.find((disc) => disc.text === "1")!.width,
+  ).toBeGreaterThanOrEqual(34);
+  expect(
+    medalDiscs.find((disc) => disc.text === "1")!.fontSize,
+  ).toBeGreaterThanOrEqual(18);
+  expect(
+    Math.min(
+      ...medalDiscs
+        .filter((disc) => disc.text !== "1")
+        .map((disc) => disc.width),
+    ),
+  ).toBeGreaterThanOrEqual(24);
+
+  await page.locator('.mobile-nav [data-view="history"]').click();
+  const archivedColumns = await page
+    .locator(".archived-board")
+    .first()
+    .evaluate(
+      (element) =>
+        getComputedStyle(element).gridTemplateColumns.split(" ").length,
+    );
+  expect(archivedColumns).toBe(4);
+
+  await page.locator('.mobile-nav [data-view="standings"]').click();
+  await page.locator(".ranking-name").first().click();
+  await expect(page.locator(".player-results-table thead")).toBeVisible();
+  const tableLayout = await page
+    .locator(".player-results .table-wrap")
+    .evaluate((frame) => ({
+      frameWidth: frame.clientWidth,
+      contentWidth: frame.scrollWidth,
+      pageOverflow:
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    }));
+  expect(tableLayout.contentWidth).toBeGreaterThan(tableLayout.frameWidth);
+  expect(tableLayout.pageOverflow).toBeLessThanOrEqual(1);
+});
+
+test("Android install fallback fits the mobile settings dialog", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.locator('[data-action="app-settings"]').click();
+
+  await expect(
+    page.getByRole("heading", { name: "Install on Android" }),
+  ).toBeVisible();
+  await expect(page.locator(".install-settings")).toContainText(
+    "Add to Home screen",
+  );
+  await expect(
+    page.locator('.install-settings [data-action="install-app"]'),
+  ).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 async function expectStableNavigation(page: import("@playwright/test").Page) {
   const buttons = page.locator(".mobile-nav button");
   await expect(buttons).toHaveCount(6);
@@ -139,10 +262,17 @@ test("round robin keeps the original matrix in a mobile scroll frame", async ({
   await expectStableNavigation(page);
 
   await page.locator('.mobile-nav [data-view="standings"]').click();
-  await expect(page.locator(".content .mobile-ranking-list")).toBeVisible();
-  await expect(page.locator(".content .mobile-rank-card")).toHaveCount(4);
-  await expect(page.locator(".content .mobile-rank-card .avatar")).toHaveCount(
-    0,
+  await expect(page.locator(".content .mobile-ranking-list")).toBeHidden();
+  await expect(page.locator(".content .ranking-table")).toBeVisible();
+  await expect(page.locator(".content .ranking-table tbody tr")).toHaveCount(4);
+  const standingsFrame = await page
+    .locator(".content .ranking-report > .table-wrap")
+    .evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+  expect(standingsFrame.scrollWidth).toBeGreaterThan(
+    standingsFrame.clientWidth,
   );
   await expectStableNavigation(page);
 });

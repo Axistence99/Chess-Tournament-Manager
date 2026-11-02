@@ -15,6 +15,11 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
 
   await clearAndOpen(page);
   await expect(page).toHaveTitle("Chest-Tournament Manager");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "criterion");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+    "content",
+    "#1c503a",
+  );
   await expect(page.locator(".creation-page")).toBeVisible();
   await expect(page.locator(".creation-identity img")).toBeVisible();
   await expect(page.locator(".hero h2")).toHaveCount(0);
@@ -56,6 +61,15 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(
     page.getByRole("heading", { name: "Starting Rank", exact: true }),
   ).toBeVisible();
+  await expect(page.locator('.content [data-action="projector"]')).toHaveCount(
+    0,
+  );
+  await expect(
+    page.locator('.content [data-export="pdf-standings"]'),
+  ).toHaveCount(0);
+  await page.locator('.topbar [data-action="toggle-export"]').click();
+  await expect(page.locator('[data-export="xlsx-final"]')).toBeDisabled();
+  await page.locator('.topbar [data-action="toggle-export"]').click();
 
   await page.locator('.nav [data-view="pairings"]').click();
   await expect(
@@ -65,6 +79,13 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(page.locator('[data-action="lock"]')).toHaveCount(0);
   await expect(page.locator('[data-result="1F-0F"]')).toHaveCount(0);
   await expect(page.locator('[data-result="0F-1F"]')).toHaveCount(0);
+
+  await page.locator('.nav [data-view="standings"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Rank after Round 1", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/results missing/i)).toHaveCount(0);
+  await page.locator('.nav [data-view="pairings"]').click();
 
   const boards = page.locator('.board-card [data-result="1-0"]');
   const boardCount = await boards.count();
@@ -83,6 +104,10 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   await expect(page.locator(".podium-2")).toBeVisible();
   await expect(page.locator(".podium-3")).toBeVisible();
   await expect(page.locator(".podium article").nth(1)).toHaveClass(/podium-1/);
+  await expect(page.locator(".podium .podium-medal")).toHaveCount(3);
+  await expect(page.locator(".podium-1 .podium-medal-number")).toHaveText("1");
+  await expect(page.locator(".podium-2 .podium-medal-number")).toHaveText("2");
+  await expect(page.locator(".podium-3 .podium-medal-number")).toHaveText("3");
   await expect(page.locator(".podium .avatar")).toHaveCount(0);
   const finalTable = page.locator(".content .ranking-table");
   await expect(finalTable.locator(".ranking-crown")).toHaveCount(3);
@@ -90,10 +115,14 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
     "aria-label",
     "Champion",
   );
-  await expect(finalTable.locator("thead")).toContainText("Games");
+  await expect(finalTable.locator("thead")).not.toContainText("Games");
+  await expect(finalTable.locator("thead th").nth(3)).toHaveText("Rtg");
+  await expect(finalTable.locator("thead th").nth(4)).toHaveText("Pts.");
   await expect(finalTable.locator("thead")).toContainText("+");
   await expect(finalTable.locator("thead")).toContainText("=");
   await expect(finalTable.locator("thead")).toContainText("−");
+  await expect(finalTable.locator("thead")).not.toContainText("SNo");
+  await expect(finalTable.locator("thead")).not.toContainText("Club/City");
   await expect(
     page.locator(".ranking-table .rating-change.positive"),
   ).not.toHaveCount(0);
