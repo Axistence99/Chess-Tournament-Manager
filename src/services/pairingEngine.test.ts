@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Player, Round } from "../models";
 import {
   generateKnockout,
+  generateManualCrosstable,
   generateRoundRobin,
   generateSwiss,
   knockoutRoundCount,
@@ -23,6 +24,22 @@ function players(count: number): Player[] {
     active: true,
   }));
 }
+
+describe("Manual Crosstable pairing", () => {
+  it("creates every unique active-player matchup exactly once", () => {
+    const field = players(5);
+    field[4].active = false;
+    const games = generateManualCrosstable(field);
+    expect(games).toHaveLength(6);
+    const keys = games.map((game) =>
+      [game.whiteId, game.blackId].sort().join("-"),
+    );
+    expect(new Set(keys).size).toBe(6);
+    expect(games.every((game) => game.result === null && game.blackId)).toBe(
+      true,
+    );
+  });
+});
 
 describe("Swiss pairing", () => {
   it("recommends compact rounds from the active field size", () => {

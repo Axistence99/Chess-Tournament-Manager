@@ -149,9 +149,12 @@ test("Android install fallback fits the mobile settings dialog", async ({
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-async function expectStableNavigation(page: import("@playwright/test").Page) {
+async function expectStableNavigation(
+  page: import("@playwright/test").Page,
+  expectedCount = 6,
+) {
   const buttons = page.locator(".mobile-nav button");
-  await expect(buttons).toHaveCount(6);
+  await expect(buttons).toHaveCount(expectedCount);
   const boxes = await buttons.evaluateAll((items) =>
     items.map((item) => {
       const box = item.getBoundingClientRect();
@@ -275,6 +278,92 @@ test("round robin keeps the original matrix in a mobile scroll frame", async ({
     standingsFrame.clientWidth,
   );
   await expectStableNavigation(page);
+});
+
+test("manual crosstable controls stay contained on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  const manual: any = structuredClone(completedTournament);
+  manual.tournament.name = "Mobile Manual Crosstable";
+  manual.tournament.type = "Manual Crosstable";
+  manual.tournament.finished = false;
+  manual.rounds[0].completed = false;
+  manual.rounds[0].pairings = [
+    {
+      id: "m1",
+      board: 1,
+      whiteId: "p1",
+      blackId: "p2",
+      result: null,
+      locked: true,
+    },
+    {
+      id: "m2",
+      board: 2,
+      whiteId: "p3",
+      blackId: "p1",
+      result: null,
+      locked: true,
+    },
+    {
+      id: "m3",
+      board: 3,
+      whiteId: "p1",
+      blackId: "p4",
+      result: null,
+      locked: true,
+    },
+    {
+      id: "m4",
+      board: 4,
+      whiteId: "p2",
+      blackId: "p3",
+      result: null,
+      locked: true,
+    },
+    {
+      id: "m5",
+      board: 5,
+      whiteId: "p4",
+      blackId: "p2",
+      result: null,
+      locked: true,
+    },
+    {
+      id: "m6",
+      board: 6,
+      whiteId: "p3",
+      blackId: "p4",
+      result: null,
+      locked: true,
+    },
+  ];
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#restore-file").setInputFiles({
+    name: "mobile-manual-crosstable.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(manual)),
+  });
+  await page.locator('.mobile-nav [data-view="pairings"]').click();
+
+  await expect(page.locator(".manual-score-select")).toHaveCount(12);
+  await expect(page.locator('.mobile-nav [data-view="history"]')).toHaveCount(
+    0,
+  );
+  const layout = await page.evaluate(() => ({
+    pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
+    frameScrolls:
+      document.querySelector<HTMLElement>(".round-robin-scroll")!.scrollWidth >
+      document.querySelector<HTMLElement>(".round-robin-scroll")!.clientWidth,
+    controlHeight: document
+      .querySelector(".manual-score-select")!
+      .getBoundingClientRect().height,
+  }));
+  expect(layout.pageOverflow).toBeLessThanOrEqual(1);
+  expect(layout.frameScrolls).toBe(true);
+  expect(layout.controlHeight).toBeGreaterThanOrEqual(34);
+  await expectStableNavigation(page, 5);
 });
 
 test("hidden navigation restore control stays clear of mobile content and navigation", async ({

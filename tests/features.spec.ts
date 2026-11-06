@@ -13,6 +13,84 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("Manual Crosstable records mirrored results without visible rounds", async ({
+  page,
+}) => {
+  const manual: any = structuredClone(completedTournament);
+  manual.tournament.id = "manual-event";
+  manual.tournament.name = "Manual Matrix";
+  manual.tournament.type = "Manual Crosstable";
+  manual.tournament.finished = false;
+  manual.rounds = [
+    {
+      number: 1,
+      locked: true,
+      completed: false,
+      createdAt: "2026-09-28T01:00:00.000Z",
+      pairings: [
+        {
+          id: "m1",
+          board: 1,
+          whiteId: "p1",
+          blackId: "p2",
+          result: null,
+          locked: true,
+        },
+        {
+          id: "m2",
+          board: 2,
+          whiteId: "p3",
+          blackId: "p1",
+          result: null,
+          locked: true,
+        },
+        {
+          id: "m3",
+          board: 3,
+          whiteId: "p2",
+          blackId: "p3",
+          result: null,
+          locked: true,
+        },
+      ],
+    },
+  ];
+  manual.players = manual.players.slice(0, 3);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#restore-file").setInputFiles({
+    name: "manual-crosstable.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(manual)),
+  });
+
+  await expect(page.locator('.nav [data-view="history"]')).toHaveCount(0);
+  await expect(page.getByText(/Round 1/)).toHaveCount(0);
+  await page.locator('.nav [data-view="pairings"]').click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Manual Crosstable",
+      exact: true,
+      level: 2,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".current-round-label")).toHaveCount(0);
+  await expect(page.locator('[data-action="end-tournament"]')).toHaveCount(0);
+
+  const alphaBeta = page.getByLabel("Result for Alpha King against Beta Queen");
+  const betaAlpha = page.getByLabel("Result for Beta Queen against Alpha King");
+  await alphaBeta.selectOption("1-0");
+  await expect(betaAlpha).toHaveValue("0-1");
+  await expect(page.locator(".toast")).toHaveCount(0);
+
+  await page
+    .getByLabel("Result for Alpha King against Gamma Rook")
+    .selectOption("½-½");
+  await page
+    .getByLabel("Result for Beta Queen against Gamma Rook")
+    .selectOption("0-1");
+  await expect(page.locator('[data-action="end-tournament"]')).toBeVisible();
+});
+
 test("Android PWA install prompt is deferred to an explicit install control", async ({
   page,
 }) => {
@@ -529,6 +607,14 @@ test("team formats, rating status, team size, and scoring are available during c
   await page.locator('[data-action="choose-tournament"]').click();
   await page.locator('[data-action="new-from-library"]').click();
   await page.locator('[data-action="confirm-new"]').click();
+  await expect(
+    page
+      .locator("#tournament-type")
+      .getByRole("option", { name: "Manual Crosstable" }),
+  ).toHaveCount(1);
+  await page.locator("#tournament-type").selectOption("Manual Crosstable");
+  await expect(page.locator("#round-count-input")).toBeHidden();
+  await expect(page.locator("#round-count-output")).toContainText("Matchups");
   await expect(
     page
       .locator("#tournament-type")

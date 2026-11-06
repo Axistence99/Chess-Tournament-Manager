@@ -27,7 +27,12 @@ export function pgn(state: AppState, roundNumber?: number) {
             ["Event", state.tournament.name],
             ["Site", state.tournament.venue],
             ["Date", state.tournament.date.replaceAll("-", ".")],
-            ["Round", `${r.number}.${g.board}`],
+            [
+              "Round",
+              state.tournament.type === "Manual Crosstable"
+                ? "?"
+                : `${r.number}.${g.board}`,
+            ],
             ["White", w.name],
             ["Black", b.name],
             ["Result", res(g.result)],

@@ -30,6 +30,8 @@ function federation(country: string): string {
 function reportTitle(s: AppState): string {
   const round = s.rounds.at(-1)?.number || 0;
   if (s.tournament.finished) return "Final Rank";
+  if (s.tournament.type === "Manual Crosstable")
+    return round ? "Current Ranking" : "Starting Rank";
   if (round === 0) return "Starting Rank";
   return `Rank after Round ${round}`;
 }
@@ -63,7 +65,9 @@ export function makePdf(
       s.tournament.organizer ? `Organizer: ${s.tournament.organizer}` : "",
       s.tournament.type,
       `Time control: ${s.tournament.timeControl}`,
-      `${s.tournament.totalRounds} rounds`,
+      s.tournament.type === "Manual Crosstable"
+        ? `${s.rounds[0]?.pairings.filter((game) => game.result !== null).length || 0}/${s.rounds[0]?.pairings.length || 0} matchups recorded`
+        : `${s.tournament.totalRounds} rounds`,
     ]
       .filter(Boolean)
       .join("  •  ");
@@ -392,7 +396,9 @@ export async function makeXlsx(s: AppState, save = true): Promise<Blob> {
     s.tournament.date,
     s.tournament.venue || "Venue not set",
     s.tournament.type,
-    `${s.rounds.length} round${s.rounds.length === 1 ? "" : "s"}`,
+    s.tournament.type === "Manual Crosstable"
+      ? `${s.rounds[0]?.pairings.length || 0} matchups`
+      : `${s.rounds.length} round${s.rounds.length === 1 ? "" : "s"}`,
     s.tournament.rated ? "Rated" : "Unrated",
   ].join(" · ");
   const widths = headers

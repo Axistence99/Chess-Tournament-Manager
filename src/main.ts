@@ -17,6 +17,7 @@ import type {
 import { storage, download, slug } from "./services/storage";
 import {
   generateKnockout,
+  generateManualCrosstable,
   generateRoundRobin,
   generateSwiss,
   knockoutRoundCount,
@@ -401,13 +402,22 @@ const gamesDone = () =>
   );
 const gamesTotal = () =>
   state.rounds.reduce((n, r) => n + r.pairings.length, 0);
-const tournamentStarted = () => state.rounds.length > 0;
+const tournamentStarted = () =>
+  isManualCrosstable()
+    ? state.rounds.some((round) =>
+        round.pairings.some((pairing) => pairing.result !== null),
+      )
+    : state.rounds.length > 0;
 
 const isTeamTournament = (type = state.tournament.type) =>
   type === "Team Swiss" || type === "Team Round Robin";
 
+const isManualCrosstable = (type = state.tournament.type) =>
+  type === "Manual Crosstable";
+
 const isRoundRobinTournament = () =>
   state.tournament.type === "Round Robin" ||
+  state.tournament.type === "Manual Crosstable" ||
   state.tournament.type === "Team Round Robin";
 
 const roundRobinHasRecordedResults = () =>
@@ -469,6 +479,12 @@ if (hasTournament && syncAutomaticRoundCount()) {
 
 const canEndTournament = () => {
   const finalRound = currentRound();
+  if (isManualCrosstable())
+    return (
+      !state.tournament.finished &&
+      Boolean(finalRound?.pairings.length) &&
+      isComplete(finalRound)
+    );
   return (
     !state.tournament.finished &&
     state.rounds.length === state.tournament.totalRounds &&
@@ -578,7 +594,13 @@ const baseNav = [
   ["help", "circle-help", "Help"],
 ];
 function navigationItems() {
-  const items = [...baseNav];
+  const items = baseNav
+    .filter(([view]) => !(isManualCrosstable() && view === "history"))
+    .map((item) => [...item]);
+  if (isManualCrosstable()) {
+    const pairings = items.find(([view]) => view === "pairings");
+    if (pairings) pairings[2] = "Crosstable";
+  }
   if (isTeamTournament()) items.splice(2, 0, ["teams", "shield", "Teams"]);
   return items;
 }
@@ -601,10 +623,10 @@ function shell(content: string) {
     layoutPreferences.hideSidebar || layoutPreferences.hideTopbar
       ? `<div class="layout-reveal-controls" aria-label="Hidden navigation controls">${layoutPreferences.hideSidebar ? `<button class="icon-btn" data-action="show-sidebar" aria-label="Show left navigation" data-tooltip="Show left navigation">${icon("panel-left-open")}</button>` : ""}${layoutPreferences.hideTopbar ? `<button class="icon-btn" data-action="show-topbar" aria-label="Show top bar" data-tooltip="Show top bar">${icon("panel-top-open")}</button>` : ""}</div>`
       : "";
-  return `<div class="app ${layoutClasses}"><aside class="sidebar"><div class="brand"><img src="${themeLogoPath()}" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.tournament.rated ? "Rated" : "Unrated"} · ${state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar">${!isStandaloneApp() && deferredInstallPrompt ? `<button class="btn install-toolbar-btn" data-action="install-app" aria-label="Install Chest-Tournament Manager">${icon("smartphone")}<span class="hide-mobile"> Install</span></button>` : ""}<button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" style="--nav-count:${navigationItems().length}" aria-label="Mobile navigation">${navButtons(true)}</nav>${revealControls}</div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
+  return `<div class="app ${layoutClasses}"><aside class="sidebar"><div class="brand"><img src="${themeLogoPath()}" alt=""><div><strong>Chest-Tournament</strong><small>Manager</small></div></div><nav class="nav" aria-label="Main navigation">${navButtons()}</nav><div class="sidebar-foot"><button class="btn" data-action="projector">${icon("presentation")} Projector mode</button><div class="autosave"><span class="dot"></span><span id="save-status">Autosaved locally</span></div></div></aside><main id="main" tabindex="-1"><header class="topbar"><button class="tournament-switcher" data-action="choose-tournament" aria-label="Choose tournament"><span><h1>${h(state.tournament.name)}</h1><p>${state.tournament.type} · ${state.tournament.rated ? "Rated" : "Unrated"} · ${isManualCrosstable() ? `${currentRound()?.pairings.filter((game) => game.result !== null).length || 0}/${currentRound()?.pairings.length || 0} results` : state.rounds.length ? `Round ${state.rounds.length}` : "Ready to begin"}</p></span>${icon("chevrons-up-down", 15)}</button><div class="toolbar">${!isStandaloneApp() && deferredInstallPrompt ? `<button class="btn install-toolbar-btn" data-action="install-app" aria-label="Install Chest-Tournament Manager">${icon("smartphone")}<span class="hide-mobile"> Install</span></button>` : ""}<button class="btn" data-action="app-settings" aria-label="Appearance settings">${icon("palette")}<span class="hide-mobile"> Theme</span></button><button class="btn" data-action="backup" aria-label="Download backup">${icon("cloud-download")}<span class="hide-mobile"> Backup</span></button>${exportMenu()}</div></header><div class="content">${content}</div></main><nav class="mobile-nav" style="--nav-count:${navigationItems().length}" aria-label="Mobile navigation">${navButtons(true)}</nav>${revealControls}</div>${poster()}${modalView()}${projector ? projectorView() : ""}<input hidden type="file" id="restore-file" accept=".json,application/json">`;
 }
 function exportMenu() {
-  return `<div class="export-menu"><button class="btn" data-action="restore">${icon("upload")}<span class="hide-mobile"> Restore</span></button><button class="btn primary" data-action="toggle-export">${icon("download")}<span class="export-label">Export</span>${icon("chevron-down", 14)}</button>${exportOpen ? `<div class="dropdown" role="menu"><button data-export="pgn">${icon("file-text")} PGN · Tournament</button><button data-export="pdf-standings">${icon("file-text")} PDF · Standings</button><button data-export="xlsx-final" ${state.tournament.finished ? "" : 'disabled title="Publish the final ranking to enable Excel export"'}>${icon("sheet")} XLSX · Final results</button><button data-export="pdf-pairings">${icon("file-text")} PDF · Pairings</button><button data-export="pdf-players">${icon("file-text")} PDF · Player list</button><button data-export="png">${icon("image")} PNG · 1080×1350</button><button data-export="jpg">${icon("image")} JPG · 1920×1080</button><button data-export="zip">${icon("package")} ZIP tournament package</button></div>` : ""}</div>`;
+  return `<div class="export-menu"><button class="btn" data-action="restore">${icon("upload")}<span class="hide-mobile"> Restore</span></button><button class="btn primary" data-action="toggle-export">${icon("download")}<span class="export-label">Export</span>${icon("chevron-down", 14)}</button>${exportOpen ? `<div class="dropdown" role="menu"><button data-export="pgn">${icon("file-text")} PGN · Tournament</button><button data-export="pdf-standings">${icon("file-text")} PDF · Standings</button><button data-export="xlsx-final" ${state.tournament.finished ? "" : 'disabled title="Publish the final ranking to enable Excel export"'}>${icon("sheet")} XLSX · Final results</button><button data-export="pdf-pairings">${icon("file-text")} PDF · ${isManualCrosstable() ? "Crosstable" : "Pairings"}</button><button data-export="pdf-players">${icon("file-text")} PDF · Player list</button><button data-export="png">${icon("image")} PNG · 1080×1350</button><button data-export="jpg">${icon("image")} JPG · 1920×1080</button><button data-export="zip">${icon("package")} ZIP tournament package</button></div>` : ""}</div>`;
 }
 function metrics() {
   const done = gamesDone(),
@@ -613,7 +635,7 @@ function metrics() {
   const entrants = isTeamTournament()
     ? (state.teams || []).filter((team) => team.active).length
     : state.players.filter((player) => player.active).length;
-  return `<div class="metrics"><div class="metric"><b>${entrants}</b><span>${isTeamTournament() ? "Active teams" : "Active players"}</span></div><div class="metric"><b>${state.rounds.length}<small> / ${state.tournament.totalRounds}</small></b><span>Current round</span></div><div class="metric"><b>${done}</b><span>Games completed</span></div><div class="metric"><b>${progress}%</b><span>Tournament progress</span></div></div>`;
+  return `<div class="metrics"><div class="metric"><b>${entrants}</b><span>${isTeamTournament() ? "Active teams" : "Active players"}</span></div>${isManualCrosstable() ? `<div class="metric"><b>${total}</b><span>Total matchups</span></div>` : `<div class="metric"><b>${state.rounds.length}<small> / ${state.tournament.totalRounds}</small></b><span>Current round</span></div>`}<div class="metric"><b>${done}</b><span>${isManualCrosstable() ? "Results recorded" : "Games completed"}</span></div><div class="metric"><b>${progress}%</b><span>Tournament progress</span></div></div>`;
 }
 // -----------------------------------------------------------------------------
 // Page renderers
@@ -631,8 +653,8 @@ function helpView(): string {
     ["help-tools", "Tools & data"],
   ];
   return `<section class="help-page"><header class="help-hero"><div><span class="eyebrow">Organizer handbook</span><h2>Help & tournament guide</h2><p>Learn the complete workflow, how each pairing system works, and how rankings are calculated.</p></div><span class="help-hero-mark" aria-hidden="true">${icon("book-open", 38)}</span></header><div class="help-layout"><nav class="help-toc" aria-label="Help topics"><strong>On this page</strong>${topics.map(([id, label]) => `<a href="#${id}">${label}</a>`).join("")}</nav><div class="help-content">
-  <section id="help-start" class="help-section"><div class="help-section-title"><span>${icon("rocket", 20)}</span><div><span class="eyebrow">First steps</span><h3>Getting started</h3></div></div><ol class="help-steps"><li><b>Create a tournament</b><span>Enter its name, format, date, venue, time control, and format-specific settings.</span></li><li><b>Register players</b><span>After creation, Player Management opens automatically. Add saved profiles or create new ones.</span></li><li><b>Review the field</b><span>Player and team registration remains editable until pairing history or recorded results lock the roster.</span></li><li><b>Open Pairings</b><span>The first round is created automatically when at least two eligible entrants are registered.</span></li><li><b>Enter every result</b><span>Review the completed round, then explicitly confirm before the next round is created.</span></li><li><b>Publish the final ranking</b><span>After the scheduled final round, end the tournament to display the official results.</span></li></ol></section>
-  <section id="help-formats" class="help-section"><div class="help-section-title"><span>${icon("layout-grid", 20)}</span><div><span class="eyebrow">Competition systems</span><h3>Tournament formats</h3></div></div><div class="help-card-grid"><article class="help-card"><span class="help-card-icon">${icon("git-merge", 20)}</span><h4>Swiss System</h4><p>Players with similar scores are paired while repeat opponents and color imbalance are minimized. The recommended rounds are <b>ceil(log₂ entrants)</b>; the organizer may adjust this up to the no-repeat maximum.</p></article><article class="help-card"><span class="help-card-icon">${icon("table-2", 20)}</span><h4>Round Robin</h4><p>Every player meets every other player exactly once. Even fields play <b>n − 1</b> rounds; odd fields play <b>n</b> rounds with one bye per player. The round count is automatic.</p></article><article class="help-card"><span class="help-card-icon">${icon("network", 20)}</span><h4>Knockout / Elimination</h4><p>A rating-seeded single-elimination bracket. Top seeds are distributed across opposite sections, high seeds receive byes when needed, and only decisive winners advance.</p></article><article class="help-card"><span class="help-card-icon">${icon("shield", 20)}</span><h4>Team formats</h4><p>Team Swiss and Team Round Robin group individual boards into team matches. Reusable team profiles keep their emoji identity and exact roster so they can be registered in multiple tournaments.</p></article></div></section>
+  <section id="help-start" class="help-section"><div class="help-section-title"><span>${icon("rocket", 20)}</span><div><span class="eyebrow">First steps</span><h3>Getting started</h3></div></div><ol class="help-steps"><li><b>Create a tournament</b><span>Enter its name, format, date, venue, time control, and format-specific settings.</span></li><li><b>Register players</b><span>After creation, Player Management opens automatically. Add saved profiles or create new ones.</span></li><li><b>Review the field</b><span>Player and team registration remains editable until pairing history or recorded results lock the roster.</span></li><li><b>Open Pairings</b><span>The schedule or crosstable is created automatically when at least two eligible entrants are registered.</span></li><li><b>Enter every result</b><span>Scheduled formats advance only after confirmation; Manual Crosstable results are entered directly in its matrix.</span></li><li><b>Publish the final ranking</b><span>Complete every scheduled game or Manual Crosstable matchup, then end the tournament to display the official results.</span></li></ol></section>
+  <section id="help-formats" class="help-section"><div class="help-section-title"><span>${icon("layout-grid", 20)}</span><div><span class="eyebrow">Competition systems</span><h3>Tournament formats</h3></div></div><div class="help-card-grid"><article class="help-card"><span class="help-card-icon">${icon("git-merge", 20)}</span><h4>Swiss System</h4><p>Players with similar scores are paired while repeat opponents and color imbalance are minimized. The recommended rounds are <b>ceil(log₂ entrants)</b>; the organizer may adjust this up to the no-repeat maximum.</p></article><article class="help-card"><span class="help-card-icon">${icon("table-2", 20)}</span><h4>Round Robin</h4><p>Every player meets every other player exactly once. Even fields play <b>n − 1</b> rounds; odd fields play <b>n</b> rounds with one bye per player. The round count is automatic.</p></article><article class="help-card"><span class="help-card-icon">${icon("grid-3x3", 20)}</span><h4>Manual Crosstable</h4><p>A roundless all-play-all format. Enter <b>1–0</b>, <b>½–½</b>, or <b>0–1</b> in either player's matrix cell; the mirrored score updates automatically. Every matchup is required before publication.</p></article><article class="help-card"><span class="help-card-icon">${icon("network", 20)}</span><h4>Knockout / Elimination</h4><p>A rating-seeded single-elimination bracket. Top seeds are distributed across opposite sections, high seeds receive byes when needed, and only decisive winners advance.</p></article><article class="help-card"><span class="help-card-icon">${icon("shield", 20)}</span><h4>Team formats</h4><p>Team Swiss and Team Round Robin group individual boards into team matches. Reusable team profiles keep their emoji identity and exact roster so they can be registered in multiple tournaments.</p></article></div></section>
   <section id="help-pairings" class="help-section"><div class="help-section-title"><span>${icon("swords", 20)}</span><div><span class="eyebrow">How opponents are chosen</span><h3>Pairings & rounds</h3></div></div><div class="help-definition-list"><div><b>Swiss ordering</b><p>Entrants are ordered by current points, then rating. The pairing engine prefers close scores, strongly avoids repeat opponents, and balances White and Black assignments.</p></div><div><b>Swiss bye</b><p>When the field is odd, the lowest eligible player who has not already received a bye is selected where possible. A bye scores one point.</p></div><div><b>Round Robin rotation</b><p>A fixed circle rotation generates every unique opponent combination. Colors alternate through the schedule; self-pairings are impossible.</p></div><div><b>Knockout seeding</b><p>The bracket expands to the next power of two. Players are seeded by rating, with names resolving equal ratings. Draws are unavailable because each match needs a winner.</p></div><div><b>Organizer confirmation</b><p>Completing all results does not immediately advance the event. Use the continue action to review and confirm creation of the next round.</p></div><div><b>Roster changes</b><p>An untouched Round Robin opener is rebuilt when the roster changes. Once results are recorded, registration locks to protect the schedule and standings.</p></div></div></section>
   <section id="help-results" class="help-section"><div class="help-section-title"><span>${icon("check-circle-2", 20)}</span><div><span class="eyebrow">Scoring games</span><h3>Results & notation</h3></div></div><div class="help-score-grid"><div><b>1–0</b><span>White wins</span></div><div><b>½–½</b><span>Draw</span></div><div><b>0–1</b><span>Black wins</span></div><div><b>BYE</b><span>One-point unpaired round</span></div></div><p class="help-note">Individual scoring awards 1 point for a win or bye, ½ point for a draw, and 0 for a loss. Select a different result to correct an entry before advancing. Every completed round remains available in the Rounds tab.</p></section>
   <section id="help-tiebreaks" class="help-section"><div class="help-section-title"><span>${icon("scale", 20)}</span><div><span class="eyebrow">Ranking order</span><h3>Standings & tie-breaks</h3></div></div><p>Individual players are sorted using the following order. The first value that differs decides the higher rank.</p><ol class="help-ranking"><li><span>1</span><div><b>Points</b><p>Total game points earned.</p></div></li><li><span>2</span><div><b>Buchholz</b><p>The sum of all opponents’ final or current point totals. A player who faced stronger-scoring opposition receives the higher value.</p></div></li><li><span>3</span><div><b>Sonneborn–Berger</b><p>The full score of every defeated opponent plus half the score of every drawn opponent.</p></div></li><li><span>4</span><div><b>Wins</b><p>The player with more victories ranks higher.</p></div></li><li><span>5</span><div><b>Rating</b><p>Rating resolves a tie that remains after all competition tie-breaks.</p></div></li></ol><aside class="help-callout rating-formula"><b>Rated tournament Elo</b><p>For each rated game, expected score is E = 1 ÷ (1 + 10<sup>(opponent rating − player rating) ÷ 400</sup>). The change is ΔR = round(${DEFAULT_K_FACTOR} × (actual score − E)). Game changes are zero-sum: points gained by one player are deducted from the opponent. Final changes apply only when the organizer publishes the final ranking; byes, forfeits, and games involving a zero-rated player are excluded.</p></aside><aside class="help-callout"><b>Buchholz Cut 1</b><p>The standings report also displays Buchholz with the lowest opponent score removed. It is an informational field and is not currently used in the automatic ranking order.</p></aside></section>
@@ -646,6 +668,8 @@ function helpView(): string {
 function roundCountField(tournament: Tournament): string {
   const roundRobin =
     tournament.type === "Round Robin" || tournament.type === "Team Round Robin";
+  const manualCrosstable = tournament.type === "Manual Crosstable";
+  const automaticFormat = roundRobin || manualCrosstable;
   const swiss =
     tournament.type === "Swiss System" || tournament.type === "Team Swiss";
   const teamFormat = isTeamTournament(tournament.type);
@@ -655,14 +679,19 @@ function roundCountField(tournament: Tournament): string {
   const entryLabel = teamFormat ? "teams" : "players";
   const calculated = roundRobinRoundCount(entryCount);
   const recommended = recommendedSwissRoundCount(entryCount);
-  const summary = calculated
-    ? `${calculated} round${calculated === 1 ? "" : "s"} for ${entryCount} ${entryLabel}`
-    : `Calculated automatically after at least 2 ${entryLabel} are registered`;
+  const matchupCount = (entryCount * (entryCount - 1)) / 2;
+  const summary = manualCrosstable
+    ? matchupCount
+      ? `${matchupCount} matchup${matchupCount === 1 ? "" : "s"} for ${entryCount} players`
+      : "Matchups are created after at least 2 players are registered"
+    : calculated
+      ? `${calculated} round${calculated === 1 ? "" : "s"} for ${entryCount} ${entryLabel}`
+      : `Calculated automatically after at least 2 ${entryLabel} are registered`;
   const swissHelp = recommended
     ? `Recommended: ${recommended} round${recommended === 1 ? "" : "s"} for ${entryCount} ${entryLabel}. Maximum ${calculated} without repeat pairings.`
     : `A recommendation will be calculated after at least 2 ${entryLabel} are registered.`;
   const maximum = swiss && calculated ? calculated : 30;
-  return `<div class="field"><label>Number of rounds</label><input id="round-count-input" class="round-count-input" name="totalRounds" type="number" min="1" max="${maximum}" value="${tournament.totalRounds || recommended || 1}" ${roundRobin ? "hidden disabled" : ""}><output id="round-count-output" class="derived-field round-count-output" ${roundRobin ? "" : "hidden"}>${summary}</output><small id="round-count-help">${roundRobin ? (teamFormat ? "Every team meets every other team once." : "Every player meets every other player once; self-pairings are excluded.") : swiss ? swissHelp : "Choose the scheduled number of rounds."}</small></div>`;
+  return `<div class="field"><label>${manualCrosstable ? "Matchups" : "Number of rounds"}</label><input id="round-count-input" class="round-count-input" name="totalRounds" type="number" min="1" max="${maximum}" value="${tournament.totalRounds || recommended || 1}" ${automaticFormat ? "hidden disabled" : ""}><output id="round-count-output" class="derived-field round-count-output" ${automaticFormat ? "" : "hidden"}>${summary}</output><small id="round-count-help">${manualCrosstable ? "Enter every result directly in the crosstable; every player meets every other player once." : roundRobin ? (teamFormat ? "Every team meets every other team once." : "Every player meets every other player once; self-pairings are excluded.") : swiss ? swissHelp : "Choose the scheduled number of rounds."}</small></div>`;
 }
 
 function teamSettingsFields(tournament: Tournament): string {
@@ -701,7 +730,9 @@ function updateRoundCountControls(type: Tournament["type"]): void {
   );
   const help = document.querySelector<HTMLElement>("#round-count-help");
   if (!input || !output || !help) return;
-  const automatic = type === "Round Robin" || type === "Team Round Robin";
+  const manualCrosstable = type === "Manual Crosstable";
+  const automatic =
+    type === "Round Robin" || type === "Team Round Robin" || manualCrosstable;
   const swiss = type === "Swiss System" || type === "Team Swiss";
   const teamFormat = isTeamTournament(type);
   const entryCount = teamFormat
@@ -726,12 +757,19 @@ function updateRoundCountControls(type: Tournament["type"]): void {
           : "Choose the scheduled number of rounds.";
     return;
   }
-  output.value = rounds
-    ? `${rounds} round${rounds === 1 ? "" : "s"} for ${entryCount} ${entryLabel}`
-    : `Calculated automatically after at least 2 ${entryLabel} are registered`;
-  help.textContent = teamFormat
-    ? "Every team meets every other team once."
-    : "Every player meets every other player once; self-pairings are excluded.";
+  const matchupCount = (entryCount * (entryCount - 1)) / 2;
+  output.value = manualCrosstable
+    ? matchupCount
+      ? `${matchupCount} matchup${matchupCount === 1 ? "" : "s"} for ${entryCount} players`
+      : "Matchups are created after at least 2 players are registered"
+    : rounds
+      ? `${rounds} round${rounds === 1 ? "" : "s"} for ${entryCount} ${entryLabel}`
+      : `Calculated automatically after at least 2 ${entryLabel} are registered`;
+  help.textContent = manualCrosstable
+    ? "Enter every result directly in the crosstable; every player meets every other player once."
+    : teamFormat
+      ? "Every team meets every other team once."
+      : "Every player meets every other player once; self-pairings are excluded.";
 }
 
 /** First-run setup is a real tournament form, never a saved placeholder event. */
@@ -766,7 +804,7 @@ function creationPage() {
           <div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div>
           <div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>
           ${roundCountField(t)}
-          <div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Knockout", "Team Swiss", "Team Round Robin"].map((type) => `<option ${t.type === type ? "selected" : ""}>${type}</option>`).join("")}</select></div>
+          <div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Manual Crosstable", "Knockout", "Team Swiss", "Team Round Robin"].map((type) => `<option ${t.type === type ? "selected" : ""}>${type}</option>`).join("")}</select></div>
           ${ratingStatusField(t)}
           ${teamSettingsFields(t)}
         </div>
@@ -1127,6 +1165,20 @@ function roundRobinTableView() {
           const current = latestRound === currentRound()?.number;
           const color =
             meetings.at(-1)!.game.whiteId === profile.id ? "white" : "black";
+          const latestGame = meetings.at(-1)!.game;
+          if (isManualCrosstable()) {
+            const perspectiveResult =
+              latestGame.result === null
+                ? ""
+                : latestGame.result === "½-½"
+                  ? "½-½"
+                  : (latestGame.result === "1-0") ===
+                      (latestGame.whiteId === profile.id)
+                    ? "1-0"
+                    : "0-1";
+            const opponentName = opponent.name;
+            return `<td class="rr-result rr-manual-cell"><select class="manual-score-select" data-manual-result="${latestGame.id}" data-perspective="${profile.id}" aria-label="Result for ${h(profile.name)} against ${h(opponentName)}" ${state.tournament.finished ? "disabled" : ""}><option value="" ${perspectiveResult === "" ? "selected" : ""}>—</option><option value="1-0" ${perspectiveResult === "1-0" ? "selected" : ""}>1–0</option><option value="½-½" ${perspectiveResult === "½-½" ? "selected" : ""}>½–½</option><option value="0-1" ${perspectiveResult === "0-1" ? "selected" : ""}>0–1</option></select></td>`;
+          }
           const label = meetings
             .map(
               ({ round, game }) =>
@@ -1140,7 +1192,11 @@ function roundRobinTableView() {
     })
     .join("");
 
-  return `<section class="round-robin-panel" aria-label="Round Robin crosstable"><div class="bracket-panel-head"><div><span class="eyebrow">All-play-all matrix</span><h3>Round Robin table</h3></div><span class="pill">${participants.length} players · ${state.rounds.length}/${state.tournament.totalRounds} rounds</span></div><div class="round-robin-scroll"><table class="round-robin-table"><thead><tr><th>No.</th><th>Player</th>${participants.map((_, index) => `<th aria-label="Player ${index + 1}">${index + 1}</th>`).join("")}<th>Pts.</th><th>Rk.</th></tr></thead><tbody>${rows}</tbody></table></div><p class="rr-mobile-scroll-hint">Swipe sideways to view the complete matrix. Player numbers and names stay pinned.</p><div class="rr-legend"><span><i class="rr-white"></i> Played as White</span><span><i class="rr-black"></i> Played as Black</span><span><i class="rr-current"></i> Current round</span></div></section>`;
+  const completedMatchups = games.filter(
+    ({ game }) => game.result !== null,
+  ).length;
+  const manual = isManualCrosstable();
+  return `<section class="round-robin-panel" aria-label="${manual ? "Manual" : "Round Robin"} crosstable"><div class="bracket-panel-head"><div><span class="eyebrow">All-play-all matrix</span><h3>${manual ? "Manual Crosstable" : "Round Robin table"}</h3></div><span class="pill">${manual ? `${completedMatchups}/${games.length} matchups recorded` : `${participants.length} players · ${state.rounds.length}/${state.tournament.totalRounds} rounds`}</span></div><div class="round-robin-scroll"><table class="round-robin-table"><thead><tr><th>No.</th><th>Player</th>${participants.map((_, index) => `<th aria-label="Player ${index + 1}">${index + 1}</th>`).join("")}<th>Pts.</th><th>Rk.</th></tr></thead><tbody>${rows}</tbody></table></div><p class="rr-mobile-scroll-hint">Swipe sideways to view the complete matrix. Player numbers and names stay pinned.</p>${manual ? `<p class="muted manual-crosstable-help">Choose a result from either player's cell. The mirrored score updates automatically.</p>` : `<div class="rr-legend"><span><i class="rr-white"></i> Played as White</span><span><i class="rr-black"></i> Played as Black</span><span><i class="rr-current"></i> Current round</span></div>`}</section>`;
 }
 
 function teamPairingsCards(round: Round): string {
@@ -1185,6 +1241,7 @@ function teamPairingsCards(round: Round): string {
 function pairingsView() {
   const r = currentRound();
   const knockout = state.tournament.type === "Knockout";
+  const manualCrosstable = isManualCrosstable();
   const roundRobin = state.tournament.type === "Round Robin";
   const teamFormat = isTeamTournament();
   const title = r
@@ -1218,6 +1275,8 @@ function pairingsView() {
         "Manage players",
         "go-players",
       );
+  if (manualCrosstable)
+    return `<div class="section-head"><div><span class="eyebrow">Roundless all-play-all</span><h2>Manual Crosstable</h2><p class="muted">Enter each matchup directly in the matrix.</p></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}${state.tournament.finished ? `<span class="pill final-status">${icon("trophy", 12)} Final</span>` : ""}</div></div>${r ? roundRobinTableView() : emptyState}`;
   return `<div class="section-head"><div><span class="eyebrow">${knockout ? "Single elimination" : "Tournament room"}</span><h2>${title}</h2></div><div class="toolbar">${canEndTournament() ? `<button class="btn gold" data-action="end-tournament">${icon("flag")} End tournament</button>` : ""}${state.tournament.finished ? `<span class="pill final-status">${icon("trophy", 12)} Final</span>` : ""}</div></div>${r ? `${knockout ? knockoutBracketView() : roundRobin ? roundRobinTableView() : ""}<div class="current-round-label"><span class="eyebrow">${knockout ? `${knockoutRoundLabel(r.number)} controls` : `Round ${r.number}`}</span><h3>${knockout ? "Enter decisive results" : "Enter results"}</h3></div>${teamFormat ? teamPairingsCards(r) : `<div class="card">${r.pairings.map((g) => board(g, r)).join("")}</div>`}${canAdvance ? `<section class="round-complete-prompt" aria-live="polite"><div><span class="eyebrow">Results complete</span><h3>Review Round ${r.number} before continuing</h3><p>Pairings for Round ${r.number + 1} will only be created after your confirmation.</p></div><button class="btn primary" data-action="review-next-round">${icon("arrow-right")} Continue to Round ${r.number + 1}</button></section>` : ""}<p class="muted" style="font-size:12px;margin-top:12px">${resultHelp}</p>` : emptyState}`;
 }
 
@@ -1274,6 +1333,7 @@ function countryFlag(country: string): string {
 function rankingHeading(): string {
   const round = currentRound()?.number || 0;
   if (state.tournament.finished) return "Official Final Ranking";
+  if (isManualCrosstable()) return round ? "Current Ranking" : "Starting Rank";
   if (round === 0) return "Starting Rank";
   return `Rank after Round ${round}`;
 }
@@ -1467,6 +1527,7 @@ function archivedRoundBoards(round: Round): string {
 }
 
 function historyView() {
+  if (isManualCrosstable()) return pairingsView();
   const n = selectedRound || currentRound()?.number;
   const r = state.rounds.find((x) => x.number === n);
   const completed =
@@ -1512,7 +1573,7 @@ function poster() {
         ).slice(0, 12),
       )
     : standingsTable(standings(state.players, state.rounds).slice(0, 12));
-  return `<div class="poster" id="poster"><span class="eyebrow">Official live standings</span><h1>${h(state.tournament.name)}</h1><p style="font-size:25px;color:#9eb7ac">${h(state.tournament.venue)} · ${h(state.tournament.date)} · ${h(state.tournament.type)} · ${h(state.tournament.timeControl)} · Round ${state.rounds.length}</p>${table}<p style="position:absolute;bottom:60px">Generated with Chest-Tournament Manager</p></div>`;
+  return `<div class="poster" id="poster"><span class="eyebrow">Official live standings</span><h1>${h(state.tournament.name)}</h1><p style="font-size:25px;color:#9eb7ac">${h(state.tournament.venue)} · ${h(state.tournament.date)} · ${h(state.tournament.type)} · ${h(state.tournament.timeControl)}${isManualCrosstable() ? "" : ` · Round ${state.rounds.length}`}</p>${table}<p style="position:absolute;bottom:60px">Generated with Chest-Tournament Manager</p></div>`;
 }
 // -----------------------------------------------------------------------------
 // Dialog and sheet renderers
@@ -1646,7 +1707,7 @@ function teamForm() {
 
 function tournamentForm() {
   const t = state.tournament;
-  return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><h2>Tournament settings</h2><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="tournament-form"><div class="form-grid"><div class="field"><label>Tournament name *</label><input name="name" required value="${h(t.name)}"></div><div class="field"><label>Venue</label><input name="venue" value="${h(t.venue)}"></div><div class="field"><label>Organizer</label><input name="organizer" value="${h(t.organizer)}"></div><div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div><div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>${roundCountField(t)}<div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Knockout", "Team Swiss", "Team Round Robin"].map((x) => `<option ${t.type === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>${ratingStatusField(t)}${teamSettingsFields(t)}</div><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save tournament</button></div></form></section></div>`;
+  return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><h2>Tournament settings</h2><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="tournament-form"><div class="form-grid"><div class="field"><label>Tournament name *</label><input name="name" required value="${h(t.name)}"></div><div class="field"><label>Venue</label><input name="venue" value="${h(t.venue)}"></div><div class="field"><label>Organizer</label><input name="organizer" value="${h(t.organizer)}"></div><div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div><div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>${roundCountField(t)}<div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Manual Crosstable", "Knockout", "Team Swiss", "Team Round Robin"].map((x) => `<option ${t.type === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>${ratingStatusField(t)}${teamSettingsFields(t)}</div><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save tournament</button></div></form></section></div>`;
 }
 function confirmNew() {
   return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><h2>Create another tournament?</h2><p class="muted">Your current tournament remains safely stored in this browser. You can switch between events at any time.</p><div class="toolbar"><button class="btn primary" data-action="confirm-new">Create tournament</button><button class="btn" data-action="close-modal">Cancel</button></div></section></div>`;
@@ -1681,7 +1742,7 @@ function finishTournamentModal() {
           name: entry.player.name,
           score: entry.points.toFixed(1),
         }));
-  return `<div class="modal-backdrop"><section class="modal finish-modal" role="dialog" aria-modal="true" aria-labelledby="finish-title" data-modal><div class="finish-icon">♛</div><span class="eyebrow">Final round complete</span><h2 id="finish-title">End ${h(state.tournament.name)}?</h2><p class="muted">This certifies the current standings as the final rankings and locks result entry.${state.tournament.rated ? ` Final Elo changes will be applied using K=${DEFAULT_K_FACTOR}.` : ""} Tournament details will remain available for export.</p><div class="finish-preview">${leaders.map((entry, index) => `<div class="finish-rank-${index + 1}"><span>${entry.rank}</span><b>${h(entry.name)}</b><strong>${entry.score}</strong></div>`).join("")}</div><div class="toolbar" style="justify-content:center;margin-top:22px"><button class="btn gold" data-action="confirm-end-tournament">${icon("trophy")} Publish final rankings</button><button class="btn" data-action="close-modal">Not yet</button></div></section></div>`;
+  return `<div class="modal-backdrop"><section class="modal finish-modal" role="dialog" aria-modal="true" aria-labelledby="finish-title" data-modal><div class="finish-icon">♛</div><span class="eyebrow">${isManualCrosstable() ? "All matchups complete" : "Final round complete"}</span><h2 id="finish-title">End ${h(state.tournament.name)}?</h2><p class="muted">This certifies the current standings as the final rankings and locks result entry.${state.tournament.rated ? ` Final Elo changes will be applied using K=${DEFAULT_K_FACTOR}.` : ""} Tournament details will remain available for export.</p><div class="finish-preview">${leaders.map((entry, index) => `<div class="finish-rank-${index + 1}"><span>${entry.rank}</span><b>${h(entry.name)}</b><strong>${entry.score}</strong></div>`).join("")}</div><div class="toolbar" style="justify-content:center;margin-top:22px"><button class="btn gold" data-action="confirm-end-tournament">${icon("trophy")} Publish final rankings</button><button class="btn" data-action="close-modal">Not yet</button></div></section></div>`;
 }
 
 /** Render the local tournament library. No tournament data leaves the browser. */
@@ -1694,7 +1755,7 @@ function tournamentChooser() {
       const completed = event.rounds
         .flatMap((r) => r.pairings)
         .filter((g) => g.result !== null).length;
-      return `<article class="event-card ${active ? "active" : ""}"><button class="event-main" data-switch-tournament="${t.id}" ${active ? 'aria-current="true"' : ""}><span class="event-mark">${t.finished ? "♛" : "♞"}</span><span><b>${h(t.name)}</b><small>${h(t.venue)} · ${h(t.date)}</small><small>${t.type.startsWith("Team") ? `${(event.teams || []).filter((team) => team.active).length} teams` : `${event.players.length} players`} · ${event.rounds.length}/${t.totalRounds} rounds · ${completed} results</small></span>${active ? '<span class="pill">Current</span>' : icon("chevron-right")}</button><button class="icon-btn event-delete" data-delete-tournament="${t.id}" aria-label="Delete ${h(t.name)}" ${events.length === 1 ? "disabled" : ""}>${icon("trash-2")}</button></article>`;
+      return `<article class="event-card ${active ? "active" : ""}"><button class="event-main" data-switch-tournament="${t.id}" ${active ? 'aria-current="true"' : ""}><span class="event-mark">${t.finished ? "♛" : "♞"}</span><span><b>${h(t.name)}</b><small>${h(t.venue)} · ${h(t.date)}</small><small>${t.type.startsWith("Team") ? `${(event.teams || []).filter((team) => team.active).length} teams` : `${event.players.length} players`} · ${t.type === "Manual Crosstable" ? `${completed}/${event.rounds[0]?.pairings.length || 0} matchups` : `${event.rounds.length}/${t.totalRounds} rounds · ${completed} results`}</small></span>${active ? '<span class="pill">Current</span>' : icon("chevron-right")}</button><button class="icon-btn event-delete" data-delete-tournament="${t.id}" aria-label="Delete ${h(t.name)}" ${events.length === 1 ? "disabled" : ""}>${icon("trash-2")}</button></article>`;
     })
     .join(
       "",
@@ -1729,14 +1790,14 @@ function profileModal(id: string) {
       .filter((game) => game.whiteId === id || game.blackId === id)
       .map((game) => ({ round: round.number, game })),
   );
-  return `<div class="modal-backdrop"><section class="modal player-results-modal" role="dialog" aria-modal="true" aria-labelledby="player-results-title" data-modal><div class="modal-head"><div class="player-result-identity">${avatarMarkup(p, true)}<div><span class="eyebrow">Individual results</span><h2 id="player-results-title">${h(p.name)}</h2><span class="muted">${p.rating} · Age ${p.age || "—"} · ${h(p.ageCategory || categoryForAge(p.age))} · ${p.club ? h(p.club) : p.country ? countryFlag(p.country) : "Independent"}</span></div></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><div class="metrics player-result-metrics"><div class="metric"><b>${s?.points.toFixed(1) || "0.0"}</b><span>Points</span></div><div class="metric"><b>${s?.wins || 0}</b><span>Wins</span></div><div class="metric"><b>${s?.draws || 0}</b><span>Draws</span></div><div class="metric"><b>${s?.losses || 0}</b><span>Losses</span></div></div><section class="player-results"><div class="player-results-heading"><div><span class="eyebrow">Round-by-round record</span><h3>Tournament results</h3></div><span class="pill">${games.length} ${games.length === 1 ? "game" : "games"}</span></div>${
+  return `<div class="modal-backdrop"><section class="modal player-results-modal" role="dialog" aria-modal="true" aria-labelledby="player-results-title" data-modal><div class="modal-head"><div class="player-result-identity">${avatarMarkup(p, true)}<div><span class="eyebrow">Individual results</span><h2 id="player-results-title">${h(p.name)}</h2><span class="muted">${p.rating} · Age ${p.age || "—"} · ${h(p.ageCategory || categoryForAge(p.age))} · ${p.club ? h(p.club) : p.country ? countryFlag(p.country) : "Independent"}</span></div></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><div class="metrics player-result-metrics"><div class="metric"><b>${s?.points.toFixed(1) || "0.0"}</b><span>Points</span></div><div class="metric"><b>${s?.wins || 0}</b><span>Wins</span></div><div class="metric"><b>${s?.draws || 0}</b><span>Draws</span></div><div class="metric"><b>${s?.losses || 0}</b><span>Losses</span></div></div><section class="player-results"><div class="player-results-heading"><div><span class="eyebrow">${isManualCrosstable() ? "Matchup record" : "Round-by-round record"}</span><h3>Tournament results</h3></div><span class="pill">${games.length} ${games.length === 1 ? "game" : "games"}</span></div>${
     games.length
-      ? `<div class="table-wrap"><table class="player-results-table"><thead><tr><th>Round</th><th>Board</th><th>Color</th><th>Opponent</th><th>Result</th><th>Score</th></tr></thead><tbody>${games
+      ? `<div class="table-wrap"><table class="player-results-table"><thead><tr><th>${isManualCrosstable() ? "Match" : "Round"}</th><th>Board</th><th>Color</th><th>Opponent</th><th>Result</th><th>Score</th></tr></thead><tbody>${games
           .map(({ round, game }) => {
             const isWhite = game.whiteId === id;
             const opponent = player(isWhite ? game.blackId : game.whiteId);
             const outcome = playerOutcome(game, id);
-            return `<tr><td data-label="Round"><b>R${round}</b></td><td data-label="Board">${game.board}</td><td data-label="Color"><span class="color-chip ${game.blackId ? (isWhite ? "white" : "black") : "bye"}">${game.blackId ? (isWhite ? "White" : "Black") : "Bye"}</span></td><td data-label="Opponent">${opponent ? `<button class="result-opponent" data-player="${opponent.id}">${h(opponent.name)}</button>` : "—"}</td><td data-label="Result"><span class="outcome-badge ${outcome.tone}">${outcome.label}<small>${h(resultNotation(game.result))}</small></span></td><td class="score" data-label="Score">${outcome.score}</td></tr>`;
+            return `<tr><td data-label="${isManualCrosstable() ? "Match" : "Round"}"><b>${isManualCrosstable() ? game.board : `R${round}`}</b></td><td data-label="Board">${game.board}</td><td data-label="Color"><span class="color-chip ${game.blackId ? (isWhite ? "white" : "black") : "bye"}">${game.blackId ? (isWhite ? "White" : "Black") : "Bye"}</span></td><td data-label="Opponent">${opponent ? `<button class="result-opponent" data-player="${opponent.id}">${h(opponent.name)}</button>` : "—"}</td><td data-label="Result"><span class="outcome-badge ${outcome.tone}">${outcome.label}<small>${h(resultNotation(game.result))}</small></span></td><td class="score" data-label="Score">${outcome.score}</td></tr>`;
           })
           .join("")}</tbody></table></div>`
       : '<div class="player-results-empty"><span>♙</span><b>No results recorded</b><p class="muted">This player’s games will appear here after pairings are created.</p></div>'
@@ -1761,12 +1822,15 @@ function deactivateProjector(): void {
 
 function projectorView() {
   const roundRobin = state.tournament.type === "Round Robin";
+  const manualCrosstable = isManualCrosstable();
   const knockout = state.tournament.type === "Knockout";
-  const competitionLabel = roundRobin
-    ? "Round Robin Table"
-    : knockout
-      ? "Elimination Bracket"
-      : `Round ${state.rounds.length} Pairings`;
+  const competitionLabel = manualCrosstable
+    ? "Manual Crosstable"
+    : roundRobin
+      ? "Round Robin Table"
+      : knockout
+        ? "Elimination Bracket"
+        : `Round ${state.rounds.length} Pairings`;
   const labels = ["Live Standings", competitionLabel, "Tournament Overview"];
   let body = "";
   if (projectorSlide === 0)
@@ -1780,7 +1844,7 @@ function projectorView() {
         )
       : standingsTable(standings(state.players, state.rounds).slice(0, 12));
   else if (projectorSlide === 1) {
-    if (roundRobin) body = roundRobinTableView();
+    if (roundRobin || manualCrosstable) body = roundRobinTableView();
     else if (knockout) body = knockoutBracketView();
     else
       body = currentRound()
@@ -1904,6 +1968,31 @@ function prepareAutomaticRound(allowAdvance = false): boolean {
   const activeTeams = (state.teams || []).filter((team) => team.active);
   if (isTeamTournament() ? activeTeams.length < 2 : active.length < 2)
     return changed;
+
+  // Manual Crosstable stores one compatibility container so standings,
+  // ratings, records, and exports can reuse the established game pipeline.
+  // It is never presented to the organizer as a round.
+  if (isManualCrosstable()) {
+    state.tournament.totalRounds = 1;
+    if (!state.rounds.length) {
+      const pairings = generateManualCrosstable(state.players);
+      state.rounds = [
+        {
+          number: 1,
+          pairings,
+          locked: true,
+          completed: false,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      if (state.tournament.rated && !state.tournament.startingRatings)
+        state.tournament.startingRatings = Object.fromEntries(
+          state.players.map((profile) => [profile.id, profile.rating]),
+        );
+      return true;
+    }
+    return changed;
+  }
 
   if (state.tournament.type === "Knockout" && !state.rounds.length) {
     state.tournament.totalRounds = knockoutRoundCount(active.length);
@@ -2109,7 +2198,10 @@ function submitTeam(form: HTMLFormElement) {
 function submitTournament(form: HTMLFormElement) {
   const creatingTournament = draftingNewTournament || !hasTournament;
   if (tournamentStarted()) {
-    toast("Tournament settings cannot change after Round 1 starts.", "error");
+    toast(
+      "Tournament settings cannot change after results are recorded.",
+      "error",
+    );
     return;
   }
   const f = new FormData(form);
@@ -2180,7 +2272,8 @@ async function doExport(type: string) {
       );
     else if (type === "pdf-standings") makePdf(state, "standings");
     else if (type === "xlsx-final") await makeXlsx(state);
-    else if (type === "pdf-pairings") makePdf(state, "pairings");
+    else if (type === "pdf-pairings")
+      makePdf(state, isManualCrosstable() ? "crosstable" : "pairings");
     else if (type === "pdf-players") makePdf(state, "players");
     else if (type === "png" || type === "jpg")
       await makeImage(
@@ -2772,6 +2865,25 @@ app.addEventListener("input", (e) => {
 });
 app.addEventListener("change", (e) => {
   const t = e.target as HTMLInputElement;
+  if (t.dataset.manualResult && isManualCrosstable()) {
+    const round = currentRound();
+    const game = round?.pairings.find(
+      (pairing) => pairing.id === t.dataset.manualResult,
+    );
+    if (!round || !game || state.tournament.finished) return;
+    const selected = t.value as "" | "1-0" | "½-½" | "0-1";
+    if (!selected) game.result = null;
+    else if (selected === "½-½") game.result = "½-½";
+    else {
+      const perspectiveWon = selected === "1-0";
+      const perspectiveIsWhite = t.dataset.perspective === game.whiteId;
+      game.result = perspectiveWon === perspectiveIsWhite ? "1-0" : "0-1";
+    }
+    round.completed = isComplete(round);
+    storage.save(state);
+    render();
+    return;
+  }
   if (t.id === "tournament-type")
     updateRoundCountControls(t.value as Tournament["type"]);
   if (t.name === "teamScoring")
@@ -2968,7 +3080,7 @@ window
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=85").then((registration) => {
+    navigator.serviceWorker.register("./sw.js?v=86").then((registration) => {
       void registration.update();
     });
   });

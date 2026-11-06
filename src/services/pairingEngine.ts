@@ -113,6 +113,28 @@ export function generateRoundRobin(
   out.forEach((g, i) => (g.board = i + 1));
   return out;
 }
+/** Build every unique matchup for the roundless Manual Crosstable format. */
+export function generateManualCrosstable(players: Player[]): Pairing[] {
+  const active = players
+    .filter((player) => player.active)
+    .sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name));
+  const pairings: Pairing[] = [];
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const flip = (i + j) % 2 === 1;
+      pairings.push({
+        id: uid(),
+        board: pairings.length + 1,
+        whiteId: flip ? active[j].id : active[i].id,
+        blackId: flip ? active[i].id : active[j].id,
+        result: null,
+        locked: false,
+      });
+    }
+  }
+  return pairings;
+}
+
 /**
  * Build a seeded single-elimination bracket.
  *
