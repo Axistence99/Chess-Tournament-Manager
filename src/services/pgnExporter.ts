@@ -29,7 +29,7 @@ export function pgn(state: AppState, roundNumber?: number) {
             ["Date", state.tournament.date.replaceAll("-", ".")],
             [
               "Round",
-              state.tournament.type === "Manual Crosstable"
+              state.tournament.type === "Round Robin manual crosstable"
                 ? "?"
                 : `${r.number}.${g.board}`,
             ],

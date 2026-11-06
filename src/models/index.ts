@@ -2,7 +2,7 @@
 export type TournamentType =
   | "Swiss System"
   | "Round Robin"
-  | "Manual Crosstable"
+  | "Round Robin manual crosstable"
   | "Knockout"
   | "Team Swiss"
   | "Team Round Robin";

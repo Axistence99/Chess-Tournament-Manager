@@ -25,7 +25,7 @@ function players(count: number): Player[] {
   }));
 }
 
-describe("Manual Crosstable pairing", () => {
+describe("Round Robin manual crosstable pairing", () => {
   it("creates every unique active-player matchup exactly once", () => {
     const field = players(5);
     field[4].active = false;

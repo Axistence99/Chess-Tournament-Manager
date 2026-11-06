@@ -13,13 +13,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test("Manual Crosstable records mirrored results without visible rounds", async ({
+test("Round Robin manual crosstable records mirrored results without visible rounds", async ({
   page,
 }) => {
   const manual: any = structuredClone(completedTournament);
   manual.tournament.id = "manual-event";
   manual.tournament.name = "Manual Matrix";
-  manual.tournament.type = "Manual Crosstable";
+  manual.tournament.type = "Round Robin manual crosstable";
   manual.tournament.finished = false;
   manual.rounds = [
     {
@@ -68,7 +68,7 @@ test("Manual Crosstable records mirrored results without visible rounds", async 
   await page.locator('.nav [data-view="pairings"]').click();
   await expect(
     page.getByRole("heading", {
-      name: "Manual Crosstable",
+      name: "Round Robin manual crosstable",
       exact: true,
       level: 2,
     }),
@@ -89,6 +89,15 @@ test("Manual Crosstable records mirrored results without visible rounds", async 
     .getByLabel("Result for Beta Queen against Gamma Rook")
     .selectOption("0-1");
   await expect(page.locator('[data-action="end-tournament"]')).toBeVisible();
+
+  await expect(alphaBeta.locator('option[value=""]')).toHaveText(
+    "Remove result",
+  );
+  await alphaBeta.selectOption("");
+  await expect(alphaBeta).toHaveValue("");
+  await expect(betaAlpha).toHaveValue("");
+  await expect(alphaBeta.locator('option[value=""]')).toHaveText("No result");
+  await expect(page.locator('[data-action="end-tournament"]')).toHaveCount(0);
 });
 
 test("Android PWA install prompt is deferred to an explicit install control", async ({
@@ -610,9 +619,11 @@ test("team formats, rating status, team size, and scoring are available during c
   await expect(
     page
       .locator("#tournament-type")
-      .getByRole("option", { name: "Manual Crosstable" }),
+      .getByRole("option", { name: "Round Robin manual crosstable" }),
   ).toHaveCount(1);
-  await page.locator("#tournament-type").selectOption("Manual Crosstable");
+  await page
+    .locator("#tournament-type")
+    .selectOption("Round Robin manual crosstable");
   await expect(page.locator("#round-count-input")).toBeHidden();
   await expect(page.locator("#round-count-output")).toContainText("Matchups");
   await expect(

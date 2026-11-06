@@ -285,8 +285,8 @@ test("manual crosstable controls stay contained on mobile", async ({
 }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   const manual: any = structuredClone(completedTournament);
-  manual.tournament.name = "Mobile Manual Crosstable";
-  manual.tournament.type = "Manual Crosstable";
+  manual.tournament.name = "Mobile Round Robin manual crosstable";
+  manual.tournament.type = "Round Robin manual crosstable";
   manual.tournament.finished = false;
   manual.rounds[0].completed = false;
   manual.rounds[0].pairings = [

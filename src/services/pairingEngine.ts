@@ -113,7 +113,7 @@ export function generateRoundRobin(
   out.forEach((g, i) => (g.board = i + 1));
   return out;
 }
-/** Build every unique matchup for the roundless Manual Crosstable format. */
+/** Build every unique matchup for the roundless Round Robin manual crosstable format. */
 export function generateManualCrosstable(players: Player[]): Pairing[] {
   const active = players
     .filter((player) => player.active)

@@ -21,6 +21,15 @@ interface TournamentLibrary {
 
 const LIBRARY_KEY = "castling.library.v2";
 const LEGACY_KEY = "castling.tournament.v1";
+const LEGACY_MANUAL_CROSSTABLE = "Manual Crosstable";
+
+/** Preserve events created before the manual format received its final name. */
+function migrateTournamentType(state: AppState): boolean {
+  if ((state.tournament.type as string) !== LEGACY_MANUAL_CROSSTABLE)
+    return false;
+  state.tournament.type = "Round Robin manual crosstable";
+  return true;
+}
 
 function readLibrary(): TournamentLibrary | null {
   try {
@@ -36,7 +45,9 @@ function readLibrary(): TournamentLibrary | null {
     const teams: Record<string, Team> = { ...(parsed.teams || {}) };
     // Older libraries stored profiles only inside tournaments. Promote each
     // unique player and team without changing historical tournament snapshots.
+    let migratedType = false;
     for (const event of Object.values(tournaments)) {
+      migratedType = migrateTournamentType(event) || migratedType;
       for (const profile of event.players || []) {
         if (!players[profile.id]) players[profile.id] = { ...profile };
       }
@@ -49,13 +60,15 @@ function readLibrary(): TournamentLibrary | null {
           };
       }
     }
-    return {
+    const library: TournamentLibrary = {
       version: 4,
       activeId: parsed.activeId || Object.keys(tournaments)[0] || "",
       tournaments,
       players,
       teams,
     };
+    if (migratedType) writeLibrary(library);
+    return library;
   } catch {
     return null;
   }
@@ -85,6 +98,7 @@ export const storage = {
         localStorage.getItem(LEGACY_KEY) || "null",
       ) as AppState | null;
       if (legacy?.tournament?.id) {
+        migrateTournamentType(legacy);
         const migrated = blankLibrary(legacy.tournament.id);
         migrated.tournaments[legacy.tournament.id] = legacy;
         for (const profile of legacy.players)
@@ -241,6 +255,7 @@ export const storage = {
       !Array.isArray(data.rounds)
     )
       throw Error("Invalid backup file");
+    migrateTournamentType(data);
     data.tournament.id = crypto.randomUUID();
     data.tournament.createdAt = new Date().toISOString();
     return data;
