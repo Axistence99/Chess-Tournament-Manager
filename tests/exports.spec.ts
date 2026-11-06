@@ -4,11 +4,15 @@ import { readFile } from "node:fs/promises";
 import JSZip from "jszip";
 import { libraryWithCompletedTournament } from "./fixtures";
 
-async function openFixture(page: Page) {
-  await page.addInitScript((library) => {
-    localStorage.setItem("castling.library.v2", JSON.stringify(library));
-    localStorage.setItem("castling.player-presets.v3", "tested");
-  }, libraryWithCompletedTournament());
+async function openFixture(page: Page, theme = "criterion") {
+  await page.addInitScript(
+    ({ library, selectedTheme }) => {
+      localStorage.setItem("castling.library.v2", JSON.stringify(library));
+      localStorage.setItem("castling.player-presets.v3", "tested");
+      localStorage.setItem("castling.theme.v1", selectedTheme);
+    },
+    { library: libraryWithCompletedTournament(), selectedTheme: theme },
+  );
   await page.goto("/");
   await expect(page.getByText("QA Championship").first()).toBeVisible();
 }
@@ -30,7 +34,7 @@ async function bytes(download: Download): Promise<Buffer> {
 test("PGN and all PDF reports download with valid signatures", async ({
   page,
 }) => {
-  await openFixture(page);
+  await openFixture(page, "ggcc");
 
   const pgn = await bytes(await exportFromMenu(page, "pgn"));
   expect(pgn.toString()).toContain('[Event "QA Championship"]');
@@ -40,13 +44,14 @@ test("PGN and all PDF reports download with valid signatures", async ({
     const pdf = await bytes(await exportFromMenu(page, type));
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     expect(pdf.length).toBeGreaterThan(1_000);
+    expect(pdf.toString("latin1")).toContain("GGCC");
   }
 });
 
 test("final results export as a valid Excel XLSX workbook", async ({
   page,
 }) => {
-  await openFixture(page);
+  await openFixture(page, "ceit");
 
   const download = await exportFromMenu(page, "xlsx-final");
   expect(download.suggestedFilename()).toBe(
@@ -69,6 +74,11 @@ test("final results export as a valid Excel XLSX workbook", async ({
   expect(sheet).toContain("Alpha King");
   expect(sheet).not.toContain("Club/City");
   expect(sheet).not.toContain(">Games<");
+  expect(sheet).toContain("CEIT theme");
+  const styles = await archive.file("xl/styles.xml")!.async("string");
+  expect(styles).toContain('rgb="FF5B1F07"');
+  expect(styles).toContain('rgb="FFF27512"');
+  expect(styles).toContain('rgb="FFFFF0D8"');
 });
 
 test("PNG, JPG and tournament ZIP exports are generated in-browser", async ({

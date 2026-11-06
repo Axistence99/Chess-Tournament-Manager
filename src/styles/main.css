@@ -2550,6 +2550,44 @@ body.modal-open {
 .poster table {
   font-size: 22px;
 }
+:root[data-theme="light"] .poster {
+  color: #16231d;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 72%,
+      #a8792024 72% 74%,
+      transparent 74%
+    ),
+    radial-gradient(circle at top right, #d9eee3, #f7faf8 58%);
+  box-shadow: inset 0 14px #197450;
+}
+:root[data-theme="criterion"] .poster {
+  color: #253c2d;
+  background:
+    linear-gradient(90deg, #1d503b 0 20px, transparent 20px),
+    radial-gradient(circle at top right, #afc7b5, #f2efd3 58%);
+  box-shadow: inset 0 14px #9b792f;
+}
+:root[data-theme="ggcc"] .poster {
+  color: #f4f1e8;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 70%,
+      #f1c64b20 70% 72%,
+      transparent 72%
+    ),
+    radial-gradient(circle at top right, #172943, #05080d 58%);
+  box-shadow: inset 0 14px #f1c64b;
+}
+:root[data-theme="ceit"] .poster {
+  color: #fff3dc;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 38px, #f2751214 38px 44px),
+    radial-gradient(circle at top right, #6f2408, #090604 58%);
+  box-shadow: inset 0 14px #f27512;
+}
 .danger-zone {
   border-color: #5a2c29;
   background: #201413;
