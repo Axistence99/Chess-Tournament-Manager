@@ -75,6 +75,13 @@ test("Round Robin manual crosstable records mirrored results without visible rou
   ).toBeVisible();
   await expect(page.locator(".current-round-label")).toHaveCount(0);
   await expect(page.locator('[data-action="end-tournament"]')).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "White and Black assignments" }),
+  ).toBeVisible();
+  await expect(page.locator(".manual-color-grid article")).toHaveCount(3);
+  await expect(
+    page.getByLabel("Alpha King plays White against Beta Queen playing Black"),
+  ).toBeVisible();
 
   const alphaBeta = page.getByLabel("Result for Alpha King against Beta Queen");
   const betaAlpha = page.getByLabel("Result for Beta Queen against Alpha King");
@@ -96,7 +103,7 @@ test("Round Robin manual crosstable records mirrored results without visible rou
   await alphaBeta.selectOption("");
   await expect(alphaBeta).toHaveValue("");
   await expect(betaAlpha).toHaveValue("");
-  await expect(alphaBeta.locator('option[value=""]')).toHaveText("No result");
+  await expect(alphaBeta.locator('option[value=""]')).toHaveText("-");
   await expect(page.locator('[data-action="end-tournament"]')).toHaveCount(0);
 });
 

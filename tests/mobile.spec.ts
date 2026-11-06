@@ -348,6 +348,13 @@ test("manual crosstable controls stay contained on mobile", async ({
   await page.locator('.mobile-nav [data-view="pairings"]').click();
 
   await expect(page.locator(".manual-score-select")).toHaveCount(12);
+  await expect(page.locator(".manual-color-grid article")).toHaveCount(6);
+  await expect(
+    page.locator(".manual-color-grid .color-chip.white"),
+  ).toHaveCount(6);
+  await expect(
+    page.locator(".manual-color-grid .color-chip.black"),
+  ).toHaveCount(6);
   await expect(page.locator('.mobile-nav [data-view="history"]')).toHaveCount(
     0,
   );
