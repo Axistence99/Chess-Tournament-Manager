@@ -201,13 +201,35 @@ test("help tab explains formats, pairings, scoring, and tie-breaks", async ({
     page.getByRole("heading", { name: "Pairings & rounds" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Standings & tie-breaks" }),
+    page.getByRole("heading", {
+      name: "Individual standings & tie-breaks",
+    }),
   ).toBeVisible();
+  for (const format of [
+    "Swiss System",
+    "Round Robin",
+    "Round Robin manual crosstable",
+    "Knockout / Elimination",
+    "Team Swiss",
+    "Team Round Robin",
+  ])
+    await expect(
+      page.getByRole("heading", { name: format, exact: true }),
+    ).toBeVisible();
+  await expect(page.locator("#help-results")).toContainText(
+    "White wins · White 1, Black 0",
+  );
   await expect(page.locator("#help-tiebreaks")).toContainText("Buchholz");
   await expect(page.locator("#help-tiebreaks")).toContainText(
     "Sonneborn–Berger",
   );
+  await expect(page.locator("#help-tiebreaks")).toContainText(
+    "current automatic ranking does not use it",
+  );
   await expect(page.locator("#help-teams")).toContainText("3–1–0 match points");
+  await expect(page.locator("#help-teams")).toContainText(
+    "match points, then board points, then Team Buchholz",
+  );
   await expect(
     page.getByRole("heading", { name: "Keyboard shortcuts" }),
   ).toBeVisible();

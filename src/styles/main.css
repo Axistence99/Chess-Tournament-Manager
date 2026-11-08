@@ -1935,6 +1935,74 @@ body.modal-open {
   border-radius: 10px;
   background: color-mix(in srgb, var(--gold) 13%, transparent);
 }
+.help-format-grid {
+  display: grid;
+  gap: 14px;
+}
+.help-format-card {
+  min-width: 0;
+  padding: clamp(16px, 2.5vw, 22px);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--panel) 74%, var(--bg));
+}
+.help-format-card header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.help-format-card header > span {
+  display: grid;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--gold);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--gold) 13%, transparent);
+}
+.help-format-card h4 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+.help-format-card small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.help-detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.help-detail-list li {
+  position: relative;
+  min-width: 0;
+  padding: 8px 0 8px 16px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.help-detail-list li::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--emerald);
+}
+.help-detail-list b {
+  color: var(--emerald);
+}
+.help-subheading {
+  margin: 22px 0 10px;
+  font-size: 15px;
+}
 .help-definition-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2105,6 +2173,7 @@ body.modal-open {
   .help-card-grid,
   .help-definition-list,
   .help-team-grid,
+  .help-detail-list,
   .shortcut-list {
     grid-template-columns: minmax(0, 1fr);
   }
