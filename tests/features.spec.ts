@@ -349,6 +349,30 @@ test("appearance settings switch and persist all five themes", async ({
   );
 });
 
+test("projector slides follow every selected theme", async ({ page }) => {
+  const themes = ["dark", "light", "criterion", "ggcc", "ceit"];
+  const designs: string[] = [];
+  for (const theme of themes) {
+    await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
+      key: "castling.theme.v1",
+      value: theme,
+    });
+    await page.reload();
+    await page.locator('.sidebar [data-action="projector"]').click();
+    const projector = page.locator(".projector");
+    await expect(projector).toHaveAttribute("data-projector-theme", theme);
+    await expect(projector).toHaveClass(new RegExp(`projector-${theme}`));
+    designs.push(
+      await projector.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return `${style.backgroundImage}|${style.backgroundColor}|${style.boxShadow}|${style.color}`;
+      }),
+    );
+    await page.keyboard.press("Escape");
+  }
+  expect(new Set(designs).size).toBe(themes.length);
+});
+
 test("desktop navigation bars can be hidden and restored safely", async ({
   page,
 }) => {
@@ -499,11 +523,13 @@ test("round robin rounds are derived from the player count", async ({
 });
 
 test("round robin format renders a responsive crosstable", async ({ page }) => {
-  const roundRobin = structuredClone(completedTournament);
+  const roundRobin: any = structuredClone(completedTournament);
   roundRobin.tournament.name = "Round Robin QA";
   roundRobin.tournament.type = "Round Robin";
   roundRobin.tournament.totalRounds = 3;
   roundRobin.tournament.finished = false;
+  roundRobin.rounds[0].completed = false;
+  roundRobin.rounds[0].pairings[1].result = null;
   roundRobin.view = "dashboard";
   page.once("dialog", (dialog) => dialog.accept());
   await page.locator("#restore-file").setInputFiles({
@@ -511,6 +537,14 @@ test("round robin format renders a responsive crosstable", async ({ page }) => {
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(roundRobin)),
   });
+
+  await page.locator('.nav [data-view="standings"]').click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Current standings · Round 1 in progress",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Rank after Round 1")).toHaveCount(0);
 
   await page.locator('.nav [data-view="pairings"]').click();
   await expect(

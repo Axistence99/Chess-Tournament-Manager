@@ -107,12 +107,15 @@ function federation(country: string): string {
 }
 
 function reportTitle(s: AppState): string {
-  const round = s.rounds.at(-1)?.number || 0;
+  const round = s.rounds.at(-1);
   if (s.tournament.finished) return "Official Final Results";
   if (s.tournament.type === "Round Robin manual crosstable")
     return round ? "Current Ranking" : "Starting Rank";
-  if (round === 0) return "Starting Rank";
-  return `Rank after Round ${round}`;
+  if (!round) return "Starting Rank";
+  const complete = round.pairings.every((game) => game.result !== null);
+  return complete
+    ? `Rank after Round ${round.number}`
+    : `Current standings · Round ${round.number} in progress`;
 }
 
 /** Build a print-ready report entirely in the browser. */

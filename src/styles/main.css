@@ -1730,6 +1730,159 @@ body.modal-open {
 .projector td {
   padding: 2vh 1vw;
 }
+.projector::before,
+.projector::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+}
+.projector::before {
+  inset: 0;
+  opacity: 0.55;
+}
+.projector::after {
+  top: 0;
+  right: 0;
+  width: min(38vw, 520px);
+  height: min(38vw, 520px);
+}
+.projector > * {
+  position: relative;
+  z-index: 1;
+}
+.projector .projector-controls,
+.projector .close-projector {
+  position: fixed;
+}
+.projector-dark {
+  color: #e9efec;
+  background: radial-gradient(circle at 50% 0, #1d4938, #07100c 55%);
+}
+.projector-dark::before {
+  background: linear-gradient(
+    135deg,
+    transparent 0 70%,
+    #4ecb8d0d 70% 72%,
+    transparent 72%
+  );
+}
+.projector-light {
+  color: #16231d;
+  background: radial-gradient(circle at 72% -12%, #d9eee3, #f7faf8 50%);
+  box-shadow: inset 0 12px #197450;
+}
+.projector-light::before {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 74%,
+      #a8792017 74% 76%,
+      transparent 76%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 0 84%,
+      #1974500d 84% 86%,
+      transparent 86%
+    );
+}
+.projector-light .projector-controls {
+  color: #16231d;
+  border-color: #b5c8be;
+  background: #fffffff0;
+  box-shadow: 0 12px 36px #173c2924;
+}
+.projector-light .projector-controls span {
+  color: #56665e;
+}
+.projector-criterion {
+  color: #253c2d;
+  background:
+    linear-gradient(90deg, #1d503b 0 18px, transparent 18px),
+    radial-gradient(circle at 78% 0, #afc7b5, #f2efd3 56%);
+  box-shadow: inset 0 12px #9b792f;
+}
+.projector-criterion::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 58px,
+    #1d503b0a 58px 59px
+  );
+}
+.projector-criterion h1 {
+  color: #1d503b;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.projector-criterion .projector-controls {
+  color: #f2efd3;
+  border-color: #9b792f;
+  background: #1d503bf2;
+}
+.projector-criterion .projector-controls span {
+  color: #f2efd3;
+}
+.projector-ggcc {
+  color: #f4f1e8;
+  background:
+    radial-gradient(circle at 78% 0, #172943, transparent 40%),
+    linear-gradient(145deg, #0d131b, #05080d 70%);
+  box-shadow: inset 0 12px #f1c64b;
+}
+.projector-ggcc::before {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 68%,
+      #f1c64b12 68% 70%,
+      transparent 70%
+    ),
+    repeating-linear-gradient(90deg, transparent 0 90px, #ffffff05 90px 91px);
+}
+.projector-ggcc::after {
+  border: 1px solid #f1c64b38;
+  transform: translate(42%, -42%) rotate(45deg);
+}
+.projector-ggcc h1,
+.projector-ggcc .eyebrow {
+  color: #f1c64b;
+}
+.projector-ggcc .projector-controls {
+  border-color: #f1c64b73;
+  background: #0d131bf2;
+}
+.projector-ggcc .projector-controls span {
+  color: #f1c64b;
+}
+.projector-ceit {
+  color: #fff3dc;
+  background:
+    radial-gradient(circle at 78% 0, #6f2408, transparent 42%),
+    linear-gradient(145deg, #17100c, #090604 72%);
+  box-shadow: inset 0 12px #f27512;
+}
+.projector-ceit::before {
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 42px,
+    #f2751214 42px 49px,
+    transparent 49px 68px
+  );
+}
+.projector-ceit::after {
+  background: radial-gradient(ellipse at center, #ffc13b22, transparent 68%);
+  transform: translate(25%, -25%);
+}
+.projector-ceit h1,
+.projector-ceit .eyebrow {
+  color: #ffc13b;
+}
+.projector-ceit .projector-controls {
+  border-color: #f2751291;
+  background: #17100cf2;
+}
+.projector-ceit .projector-controls span {
+  color: #ffc13b;
+}
 .help-page {
   display: grid;
   gap: 20px;

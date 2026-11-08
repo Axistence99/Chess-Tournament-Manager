@@ -17,7 +17,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Reusable player-profile directory with starter profiles, compressed photos, flagged federation selection, CSV import/export, and per-tournament registration
 - PGN, theme-matched PDF and Excel XLSX final results, PNG/JPG, and complete ZIP package export in the browser; every visual export follows the currently selected theme, while the final PDF uses a print-ready full-standings layout
 - Comprehensive in-app organizer handbook covering every format, progression rules, individual and team scoring, tie-break order, ratings, exports, and data safety
-- Projector mode, keyboard navigation, responsive mobile layout, and accessible focus states
+- Theme-matched three-slide Projector mode, keyboard navigation, responsive mobile layout, and accessible focus states
 - Persistent Dark, Light, classic green-and-ivory Criterion, black-and-gold GGCC, and tiger-orange CEIT themes
 - Automatic localStorage persistence, JSON backup and restore
 - Service worker for offline use after the first successful load

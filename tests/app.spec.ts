@@ -82,7 +82,10 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
 
   await page.locator('.nav [data-view="standings"]').click();
   await expect(
-    page.getByRole("heading", { name: "Rank after Round 1", exact: true }),
+    page.getByRole("heading", {
+      name: "Current standings · Round 1 in progress",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(page.getByText(/results missing/i)).toHaveCount(0);
   await page.locator('.nav [data-view="pairings"]').click();
@@ -93,6 +96,10 @@ test("complete tournament lifecycle: create, register, pair, score, and finalize
   for (let index = 0; index < boardCount; index++)
     await boards.nth(index).click();
 
+  await page.locator('.nav [data-view="standings"]').click();
+  await expect(
+    page.getByRole("heading", { name: "Rank after Round 1", exact: true }),
+  ).toBeVisible();
   await expect(page.locator('[data-action="end-tournament"]')).toBeVisible();
   await page.locator('[data-action="end-tournament"]').first().click();
   await page.locator('[data-action="confirm-end-tournament"]').click();
