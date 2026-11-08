@@ -108,7 +108,7 @@ function federation(country: string): string {
 
 function reportTitle(s: AppState): string {
   const round = s.rounds.at(-1)?.number || 0;
-  if (s.tournament.finished) return "Final Rank";
+  if (s.tournament.finished) return "Official Final Results";
   if (s.tournament.type === "Round Robin manual crosstable")
     return round ? "Current Ranking" : "Starting Rank";
   if (round === 0) return "Starting Rank";
@@ -136,7 +136,9 @@ export function makePdf(
     d.rect(0, 36.5, pageWidth, 2.5, "F");
     d.setTextColor(...palette.onPrimary);
     d.setFontSize(18);
-    d.text(s.tournament.name, 12, 13);
+    d.text(s.tournament.name, 12, 13, { maxWidth: pageWidth - 70 });
+    d.setFontSize(8);
+    d.text(`${palette.name} theme`, pageWidth - 12, 13, { align: "right" });
     d.setFontSize(11);
     d.text(rankingReport ? reportTitle(s) : kind.toUpperCase(), 12, 22);
     d.setFontSize(8);
@@ -172,6 +174,7 @@ export function makePdf(
     d.triangle(x + 1.7, y - 2.5, x + 2.5, y - 6.2, x + 3.3, y - 2.5, "F");
     d.triangle(x + 3.3, y - 2.5, x + 4.2, y - 5.5, x + 5, y - 2.5, "F");
   };
+  let bodyRowIndex = 0;
   const row = (
     cols: string[],
     positions: number[],
@@ -186,6 +189,11 @@ export function makePdf(
       d.setTextColor(...palette.primary);
       d.setFont("helvetica", "bold");
     } else {
+      if (bodyRowIndex % 2 === 1) {
+        d.setFillColor(...palette.soft);
+        d.rect(10, y - 5.5, pageWidth - 20, 7, "F");
+      }
+      bodyRowIndex++;
       d.setTextColor(30, 34, 32);
       d.setFont("helvetica", "normal");
     }
@@ -358,7 +366,10 @@ export function makePdf(
       },
     );
   }
-  if (save) d.save(`${slug(s.tournament.name)}-${kind}.pdf`);
+  if (save)
+    d.save(
+      `${slug(s.tournament.name)}-${s.tournament.finished && kind === "standings" ? "final-results" : kind}.pdf`,
+    );
   return d.output("blob");
 }
 /** Rasterize a themed DOM report at a social-media-friendly resolution. */

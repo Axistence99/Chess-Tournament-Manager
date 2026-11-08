@@ -64,7 +64,10 @@ export function generateRoundRobin(
     .sort((a, b) => b.rating - a.rating);
   const ghost = active.length % 2 ? null : undefined;
   if (ghost === null)
-    active.push({
+    // Keep the bye in the fixed circle position. Besides simplifying the
+    // rotation, this lets every real player alternate colors perfectly in an
+    // odd field while still receiving exactly one bye.
+    active.unshift({
       id: "BYE",
       name: "Bye",
       rating: 0,
@@ -99,7 +102,11 @@ export function generateRoundRobin(
       });
       continue;
     }
-    const flip = (index + i + cycle) % 2 === 1;
+    // Berger-style color allocation: the fixed-board color alternates each
+    // round, while the remaining boards alternate by board index. This keeps
+    // every single-Round-Robin player within one game of an even color split
+    // and prevents runs longer than two games with the same color.
+    const flip = i === 0 ? (index + cycle) % 2 === 1 : (i + cycle) % 2 === 1;
     out.push({
       id: uid(),
       board: 0,

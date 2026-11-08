@@ -6,7 +6,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 
 - Multi-tournament library: create, choose, resume, import, and delete independent events
 - Swiss pairing by score group, with roster-based round recommendations, no-repeat schedule caps, repeat-opponent avoidance, color balancing, and fair bye assignment
-- Round-robin pairing via the circle method, automatic rounds from field size, no self-pairings, and a responsive all-play-all crosstable
+- Round-robin pairing via the circle method, automatic rounds from field size, no self-pairings, balanced Berger-style colors with no same-color run longer than two games, and a responsive all-play-all crosstable
 - Roundless **Round Robin manual crosstable** events with direct `1–0`, `½–½`, and `0–1` matrix entry, explicit result removal, automatic mirrored scores, a White/Black assignment list, and complete-matchup validation before final publication
 - Team Swiss and Team Round Robin events with reusable emoji team profiles, exact-size rosters, per-tournament registration, grouped boards, automatic all-play-all schedules, and repeat-aware Swiss team pairing
 - Selectable team scoring at creation: 2–1–0 match points, 3–1–0 match points, board points only, or two-player Bughouse where the first teammate win earns 1 team point
@@ -15,7 +15,7 @@ A production-ready, offline-first chess tournament manager built with strict Typ
 - Live standings with Buchholz, Buchholz Cut 1, Sonneborn–Berger, wins, and color counts
 - Rated or unrated tournament selection, with zero-sum Elo updates (K=20) applied once when final rankings are published
 - Reusable player-profile directory with starter profiles, compressed photos, flagged federation selection, CSV import/export, and per-tournament registration
-- PGN, theme-matched PDF, Excel XLSX final results, PNG/JPG, and complete ZIP package export in the browser; every visual export follows the currently selected theme
+- PGN, theme-matched PDF and Excel XLSX final results, PNG/JPG, and complete ZIP package export in the browser; every visual export follows the currently selected theme, while the final PDF uses a print-ready full-standings layout
 - Projector mode, keyboard navigation, responsive mobile layout, and accessible focus states
 - Persistent Dark, Light, classic green-and-ivory Criterion, black-and-gold GGCC, and tiger-orange CEIT themes
 - Automatic localStorage persistence, JSON backup and restore

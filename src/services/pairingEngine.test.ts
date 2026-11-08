@@ -125,6 +125,47 @@ describe("round-robin pairing", () => {
     ).toBe(true);
   });
 
+  it("balances colors and avoids long same-side streaks", () => {
+    for (let fieldSize = 3; fieldSize <= 12; fieldSize++) {
+      const roster = players(fieldSize);
+      const rounds: Round[] = [];
+      for (let index = 0; index < roundRobinRoundCount(fieldSize); index++) {
+        rounds.push({
+          number: index + 1,
+          pairings: generateRoundRobin(roster, rounds),
+          locked: true,
+          completed: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      for (const profile of roster) {
+        const colors = rounds.flatMap((round) => {
+          const game = round.pairings.find(
+            (pairing) =>
+              pairing.blackId &&
+              (pairing.whiteId === profile.id ||
+                pairing.blackId === profile.id),
+          );
+          return game ? [game.whiteId === profile.id ? "W" : "B"] : [];
+        });
+        const whiteGames = colors.filter((color) => color === "W").length;
+        const blackGames = colors.length - whiteGames;
+        expect(Math.abs(whiteGames - blackGames)).toBeLessThanOrEqual(1);
+
+        let longestRun = 0;
+        let currentRun = 0;
+        let previous = "";
+        for (const color of colors) {
+          currentRun = color === previous ? currentRun + 1 : 1;
+          previous = color;
+          longestRun = Math.max(longestRun, currentRun);
+        }
+        expect(longestRun).toBeLessThanOrEqual(2);
+      }
+    }
+  });
+
   it("gives an odd field one bye per round without self-pairings", () => {
     const roster = players(5);
     const rounds: Round[] = [];

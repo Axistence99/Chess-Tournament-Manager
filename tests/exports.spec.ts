@@ -41,10 +41,17 @@ test("PGN and all PDF reports download with valid signatures", async ({
   expect(pgn.toString()).toContain('[Result "1-0"]');
 
   for (const type of ["pdf-standings", "pdf-pairings", "pdf-players"]) {
-    const pdf = await bytes(await exportFromMenu(page, type));
+    const download = await exportFromMenu(page, type);
+    if (type === "pdf-standings")
+      expect(download.suggestedFilename()).toBe(
+        "qa-championship-final-results.pdf",
+      );
+    const pdf = await bytes(download);
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     expect(pdf.length).toBeGreaterThan(1_000);
     expect(pdf.toString("latin1")).toContain("GGCC");
+    if (type === "pdf-standings")
+      expect(pdf.toString("latin1")).toContain("Official Final Results");
   }
 });
 
