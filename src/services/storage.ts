@@ -1,5 +1,6 @@
 /** LocalStorage repository for reusable profiles and multiple tournaments. */
 import type { AppState, Player, Team } from "../models";
+import { MAX_BACKUP_BYTES, validateBackup } from "./backupValidation";
 
 /**
  * One browser library owns three related data sets:
@@ -248,14 +249,14 @@ export const storage = {
   },
 
   async restore(file: File): Promise<AppState> {
-    const data = JSON.parse(await file.text()) as AppState;
-    if (
-      !data.tournament ||
-      !Array.isArray(data.players) ||
-      !Array.isArray(data.rounds)
-    )
+    const hasJsonName = file.name.toLowerCase().endsWith(".json");
+    const hasJsonType = ["application/json", "text/json", ""].includes(
+      file.type,
+    );
+    if (!hasJsonName || !hasJsonType || file.size > MAX_BACKUP_BYTES)
       throw Error("Invalid backup file");
-    migrateTournamentType(data);
+
+    const data = validateBackup(JSON.parse(await file.text()) as unknown);
     data.tournament.id = crypto.randomUUID();
     data.tournament.createdAt = new Date().toISOString();
     return data;

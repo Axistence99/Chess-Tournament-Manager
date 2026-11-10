@@ -805,11 +805,11 @@ function creationPage() {
       <h2 id="create-title">Tournament details</h2>
       <form id="creation-form">
         <div class="form-grid">
-          <div class="field full-field"><label>Tournament name *</label><input name="name" required autofocus placeholder="e.g. City Chess Open" value="${h(t.name)}"></div>
-          <div class="field"><label>Venue</label><input name="venue" placeholder="Playing venue" value="${h(t.venue)}"></div>
-          <div class="field"><label>Organizer</label><input name="organizer" placeholder="Organizer or club" value="${h(t.organizer)}"></div>
+          <div class="field full-field"><label>Tournament name *</label><input name="name" required maxlength="160" autofocus placeholder="e.g. City Chess Open" value="${h(t.name)}"></div>
+          <div class="field"><label>Venue</label><input name="venue" maxlength="200" placeholder="Playing venue" value="${h(t.venue)}"></div>
+          <div class="field"><label>Organizer</label><input name="organizer" maxlength="160" placeholder="Organizer or club" value="${h(t.organizer)}"></div>
           <div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div>
-          <div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>
+          <div class="field"><label>Time control</label><input name="timeControl" maxlength="80" value="${h(t.timeControl)}"></div>
           ${roundCountField(t)}
           <div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Round Robin manual crosstable", "Knockout", "Team Swiss", "Team Round Robin"].map((type) => `<option ${t.type === type ? "selected" : ""}>${type}</option>`).join("")}</select></div>
           ${ratingStatusField(t)}
@@ -1675,13 +1675,13 @@ function playerForm() {
           <div><b>Profile picture</b><small>Optional · JPG, PNG, or WebP</small><div class="toolbar"><label class="btn file-button">${icon("image-plus")} Choose photo<input id="player-avatar" type="file" accept="image/jpeg,image/png,image/webp" hidden></label><button id="remove-avatar-btn" type="button" class="btn danger" data-action="remove-avatar" ${pendingAvatar ? "" : "hidden"}>Remove</button></div></div>
         </div>
         <div class="form-grid">
-          <div class="field full-field"><label>Full name *</label><input name="name" required autofocus autocomplete="name" value="${h(p?.name || "")}"></div>
+          <div class="field full-field"><label>Full name *</label><input name="name" required maxlength="120" autofocus autocomplete="name" value="${h(p?.name || "")}"></div>
           <div class="field"><label>Rating *</label><input name="rating" type="number" inputmode="numeric" min="0" max="3500" required value="${p?.rating ?? ""}"></div>
           <div class="field"><label>Age *</label><input id="player-age" name="age" type="number" inputmode="numeric" min="1" max="120" required value="${age}"></div>
           <div class="field"><label>Age category</label><output id="age-category" class="derived-field" aria-live="polite">${h(category)}</output><small>Calculated automatically from age</small></div>
-          <div class="field"><label>Club <span class="optional">Optional</span></label><input name="club" value="${h(p?.club || "")}"></div>
+          <div class="field"><label>Club <span class="optional">Optional</span></label><input name="club" maxlength="160" value="${h(p?.club || "")}"></div>
           <div class="field"><label>Federation <span class="optional">Optional</span></label><div class="federation-picker"><span id="federation-selected-flag" class="selected-federation-flag">${p?.country ? countryFlag(p.country) : icon("flag", 18)}</span><select id="player-federation" name="country"><option value="">No federation</option>${FEDERATIONS.map((federation) => `<option value="${federation.code}" ${federation.code === federationCode(p?.country || "") ? "selected" : ""}>${federation.name}</option>`).join("")}</select></div></div>
-          <div class="field"><label>FIDE ID <span class="optional">Optional</span></label><input name="fideId" inputmode="numeric" value="${h(p?.fideId || "")}"></div>
+          <div class="field"><label>FIDE ID <span class="optional">Optional</span></label><input name="fideId" maxlength="40" inputmode="numeric" value="${h(p?.fideId || "")}"></div>
         </div>
         ${!p ? `<label class="registration-option"><input type="checkbox" name="registerCurrent" checked><span><b>Add to ${h(state.tournament.name)}</b><small>The profile is saved globally and registered for this tournament.</small></span></label>` : ""}
         <div class="toolbar" style="justify-content:flex-end;margin-top:22px">
@@ -1712,7 +1712,7 @@ function teamForm() {
   );
   const profiles = storage.listPlayers();
   const selectedEmoji = teamEmoji(existing);
-  return `<div class="modal-backdrop"><section class="modal team-modal" role="dialog" aria-modal="true" aria-labelledby="team-modal-title" data-modal><div class="modal-head"><div><span class="eyebrow">Reusable team directory</span><h2 id="team-modal-title">${editing ? h(existing?.name || "Team") : "Create team profile"}</h2><p class="muted">Choose an emoji and exactly ${size} players. The profile can be reused in other tournaments.</p></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="team-form"><input type="hidden" name="id" value="${existing?.id || ""}"><input id="team-emoji-value" type="hidden" name="emoji" value="${h(selectedEmoji)}"><div class="field"><label>Team name *</label><input name="name" required autofocus value="${h(existing?.name || "")}" placeholder="e.g. Green Knights"></div><div class="field"><label>Team emoji</label>${emojiPicker(selectedEmoji)}</div><div class="team-player-picker" role="group" aria-label="Choose ${size} players">${profiles
+  return `<div class="modal-backdrop"><section class="modal team-modal" role="dialog" aria-modal="true" aria-labelledby="team-modal-title" data-modal><div class="modal-head"><div><span class="eyebrow">Reusable team directory</span><h2 id="team-modal-title">${editing ? h(existing?.name || "Team") : "Create team profile"}</h2><p class="muted">Choose an emoji and exactly ${size} players. The profile can be reused in other tournaments.</p></div><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="team-form"><input type="hidden" name="id" value="${existing?.id || ""}"><input id="team-emoji-value" type="hidden" name="emoji" value="${h(selectedEmoji)}"><div class="field"><label>Team name *</label><input name="name" required maxlength="120" autofocus value="${h(existing?.name || "")}" placeholder="e.g. Green Knights"></div><div class="field"><label>Team emoji</label>${emojiPicker(selectedEmoji)}</div><div class="team-player-picker" role="group" aria-label="Choose ${size} players">${profiles
     .map((profile) => {
       const selected = existing?.playerIds.includes(profile.id) || false;
       const unavailable = occupied.has(profile.id) && !selected;
@@ -1725,7 +1725,7 @@ function teamForm() {
 
 function tournamentForm() {
   const t = state.tournament;
-  return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><h2>Tournament settings</h2><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="tournament-form"><div class="form-grid"><div class="field"><label>Tournament name *</label><input name="name" required value="${h(t.name)}"></div><div class="field"><label>Venue</label><input name="venue" value="${h(t.venue)}"></div><div class="field"><label>Organizer</label><input name="organizer" value="${h(t.organizer)}"></div><div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div><div class="field"><label>Time control</label><input name="timeControl" value="${h(t.timeControl)}"></div>${roundCountField(t)}<div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Round Robin manual crosstable", "Knockout", "Team Swiss", "Team Round Robin"].map((x) => `<option ${t.type === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>${ratingStatusField(t)}${teamSettingsFields(t)}</div><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save tournament</button></div></form></section></div>`;
+  return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><div class="modal-head"><h2>Tournament settings</h2><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon("x")}</button></div><form id="tournament-form"><div class="form-grid"><div class="field"><label>Tournament name *</label><input name="name" required maxlength="160" value="${h(t.name)}"></div><div class="field"><label>Venue</label><input name="venue" maxlength="200" value="${h(t.venue)}"></div><div class="field"><label>Organizer</label><input name="organizer" maxlength="160" value="${h(t.organizer)}"></div><div class="field"><label>Date</label><input name="date" type="date" value="${t.date}"></div><div class="field"><label>Time control</label><input name="timeControl" maxlength="80" value="${h(t.timeControl)}"></div>${roundCountField(t)}<div class="field"><label>Tournament type</label><select id="tournament-type" name="type">${["Swiss System", "Round Robin", "Round Robin manual crosstable", "Knockout", "Team Swiss", "Team Round Robin"].map((x) => `<option ${t.type === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>${ratingStatusField(t)}${teamSettingsFields(t)}</div><div class="toolbar" style="justify-content:flex-end;margin-top:22px"><button type="button" class="btn" data-action="close-modal">Cancel</button><button class="btn primary" type="submit">Save tournament</button></div></form></section></div>`;
 }
 function confirmNew() {
   return `<div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" data-modal><h2>Create another tournament?</h2><p class="muted">Your current tournament remains safely stored in this browser. You can switch between events at any time.</p><div class="toolbar"><button class="btn primary" data-action="confirm-new">Create tournament</button><button class="btn" data-action="close-modal">Cancel</button></div></section></div>`;
@@ -2778,6 +2778,8 @@ app.addEventListener("click", (e) => {
         Federation: p.country,
         "FIDE ID": p.fideId,
       })),
+      // Prevent spreadsheet applications from interpreting profile text as a formula.
+      { escapeFormulae: true },
     );
     download(
       new Blob([csv], { type: "text/csv" }),
@@ -2954,22 +2956,57 @@ app.addEventListener("change", (e) => {
         toast("Choose a valid image smaller than 10 MB.", "error");
       });
   }
-  if (t.id === "csv-file" && t.files?.[0])
-    Papa.parse<Record<string, string>>(t.files[0], {
+  if (t.id === "csv-file" && t.files?.[0]) {
+    const file = t.files[0];
+    const csvType = [
+      "text/csv",
+      "application/csv",
+      "application/vnd.ms-excel",
+      "",
+    ].includes(file.type);
+    if (
+      !file.name.toLowerCase().endsWith(".csv") ||
+      !csvType ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      toast("Choose a CSV file smaller than 5 MB.", "error");
+      t.value = "";
+      return;
+    }
+    Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
-      complete: ({ data }) => {
+      complete: ({ data, errors }) => {
+        if (errors.length || data.length > 5000) {
+          toast("The CSV is invalid or contains too many rows.", "error");
+          return;
+        }
         let imported = 0;
         for (const row of data) {
-          const name = row.Name || row.name || row["Full Name"];
+          const name = row.Name || row.name || row["Full Name"] || "";
           const rating = Number(row.Rating || row.rating);
           const age = Number(row.Age || row.age);
-          // Name, rating, and age follow the same validation rules as the form.
+          const club = row.Club || row.club || "";
+          const country =
+            row.Federation ||
+            row.federation ||
+            row.Country ||
+            row.country ||
+            "";
+          const fideId = row["FIDE ID"] || row.fideId || "";
+          // Match form limits and cap all imported text before persistence/rendering.
           if (
-            !name ||
-            !Number.isFinite(rating) ||
-            !Number.isFinite(age) ||
-            age < 1
+            !name.trim() ||
+            name.length > 120 ||
+            !Number.isInteger(rating) ||
+            rating < 0 ||
+            rating > 3500 ||
+            !Number.isInteger(age) ||
+            age < 1 ||
+            age > 120 ||
+            club.length > 160 ||
+            country.length > 32 ||
+            fideId.length > 40
           )
             continue;
           storage.savePlayer({
@@ -2977,14 +3014,9 @@ app.addEventListener("change", (e) => {
             name,
             rating,
             age,
-            club: row.Club || row.club || "",
-            country:
-              row.Federation ||
-              row.federation ||
-              row.Country ||
-              row.country ||
-              "",
-            fideId: row["FIDE ID"] || row.fideId || "",
+            club,
+            country,
+            fideId,
             ageCategory: categoryForAge(age),
             active: true,
           });
@@ -2995,7 +3027,9 @@ app.addEventListener("change", (e) => {
         );
         render();
       },
+      error: () => toast("The CSV could not be read.", "error"),
     });
+  }
   if (t.id === "restore-file" && t.files?.[0]) {
     void storage
       .restore(t.files[0])

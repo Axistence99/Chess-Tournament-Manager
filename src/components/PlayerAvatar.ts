@@ -1,5 +1,6 @@
 /** Render safe player avatars using a compressed photo or generated initials. */
 import type { Player } from "../models";
+import { isSafeAvatarSource } from "../services/backupValidation";
 import { escapeHtml, initials } from "../utils/html";
 
 /**
@@ -9,7 +10,7 @@ import { escapeHtml, initials } from "../utils/html";
  */
 export function playerAvatar(profile: Player, large = false): string {
   const classes = `avatar ${large ? "avatar-large" : ""}`;
-  if (profile.avatar) {
+  if (isSafeAvatarSource(profile.avatar)) {
     return `<span class="${classes}"><img src="${escapeHtml(profile.avatar)}" alt=""></span>`;
   }
   return `<span class="${classes}">${escapeHtml(initials(profile.name))}</span>`;

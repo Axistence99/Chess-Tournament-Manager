@@ -72,4 +72,12 @@ describe("PGN exporter", () => {
     expect(output).toContain('[TimeControl "15+10"]');
     expect(output.trim().endsWith("1-0")).toBe(true);
   });
+
+  it("keeps line breaks and backslashes inside PGN tag values", () => {
+    const hostile = structuredClone(state);
+    hostile.players[0].name = 'White"]\n[Result "0-1\\fake';
+    const output = pgn(hostile);
+    expect(output).toContain('[White "White\\\"] [Result \\"0-1\\\\fake"]');
+    expect(output).not.toContain('\n[Result "0-1');
+  });
 });

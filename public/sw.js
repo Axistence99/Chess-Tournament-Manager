@@ -1,9 +1,10 @@
 /** Offline service worker using network-first HTML and cache-first static assets. */
-const CACHE = "chest-tournament-v95";
+const CACHE = "chest-tournament-v96";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./theme-bootstrap.js",
   "./pwa-192.png",
   "./pwa-512.png",
   "./pwa-maskable-512.png",
@@ -38,7 +39,12 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (
+    event.request.method !== "GET" ||
+    requestUrl.origin !== self.location.origin
+  )
+    return;
 
   // HTML uses network-first so a deployment cannot remain trapped behind an
   // old cached application shell. The cached page remains the offline fallback.
@@ -46,8 +52,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("./index.html", copy));
+          if (response.ok && response.type === "basic") {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put("./index.html", copy));
+          }
           return response;
         })
         .catch(() => caches.match("./index.html")),
@@ -61,7 +69,7 @@ self.addEventListener("fetch", (event) => {
       (cached) =>
         cached ||
         fetch(event.request).then((response) => {
-          if (response.ok) {
+          if (response.ok && response.type === "basic") {
             const copy = response.clone();
             caches.open(CACHE).then((cache) => cache.put(event.request, copy));
           }

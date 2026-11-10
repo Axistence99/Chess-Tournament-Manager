@@ -5,13 +5,22 @@
  * without retaining the potentially multi-megabyte source image.
  */
 export async function compressAvatar(file: File): Promise<string> {
-  if (!file.type.startsWith("image/"))
-    throw new Error("Unsupported image type");
-  if (file.size > 10 * 1024 * 1024)
-    throw new Error("Image is larger than 10 MB");
+  const supportedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+  if (!supportedTypes.has(file.type)) throw new Error("Unsupported image type");
+  if (!file.size || file.size > 10 * 1024 * 1024)
+    throw new Error("Image is empty or larger than 10 MB");
 
   const source = await readAsDataUrl(file);
   const image = await decodeImage(source);
+  const pixels = image.naturalWidth * image.naturalHeight;
+  if (
+    !image.naturalWidth ||
+    !image.naturalHeight ||
+    image.naturalWidth > 8192 ||
+    image.naturalHeight > 8192 ||
+    pixels > 40_000_000
+  )
+    throw new Error("Image dimensions are too large");
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;

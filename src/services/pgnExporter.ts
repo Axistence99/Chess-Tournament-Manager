@@ -1,5 +1,11 @@
 /** Convert tournament rounds into standards-compatible PGN text. */
 import type { AppState, Pairing } from "../models";
+const pgnTag = (value: unknown): string =>
+  String(value ?? "")
+    .replace(/[\r\n\u2028\u2029]+/g, " ")
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"');
+
 const res = (r: Pairing["result"]) =>
   r === "½-½"
     ? "1/2-1/2"
@@ -47,9 +53,8 @@ export function pgn(state: AppState, roundNumber?: number) {
             ["TimeControl", state.tournament.timeControl],
           ];
           return (
-            tags
-              .map(([k, v]) => `[${k} "${String(v).replaceAll('"', '\\"')}"]`)
-              .join("\n") + `\n\n${res(g.result)}\n`
+            tags.map(([k, v]) => `[${k} "${pgnTag(v)}"]`).join("\n") +
+            `\n\n${res(g.result)}\n`
           );
         }),
     )

@@ -6,5 +6,5 @@ export default defineConfig({
   plugins: [tailwindcss()],
   server: { host: "0.0.0.0", allowedHosts: true },
   preview: { host: "0.0.0.0", allowedHosts: true },
-  build: { outDir: "dist", sourcemap: true },
+  build: { outDir: "dist", sourcemap: false },
 });

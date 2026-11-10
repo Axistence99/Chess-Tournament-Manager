@@ -34,6 +34,7 @@ src/
 ├── models/              # Shared domain types
 ├── services/            # Pairing, persistence, standings, media and exports
 │   ├── avatar.ts
+│   ├── backupValidation.ts
 │   ├── exporters.ts
 │   ├── pairingEngine.ts
 │   ├── pgnExporter.ts
@@ -123,6 +124,6 @@ Tournament and reusable player data are stored under `castling.library.v2` in lo
 
 The Swiss engine sorts players by score and rating, assigns a bye to the lowest eligible player who has not already received one, and minimizes a cost function for score difference, prior opponents, and color imbalance. Team Swiss applies the same standings-first principle to teams, avoids repeat team opponents where possible, groups individual boards into team matches, and derives team standings from the selected scoring system. Team Round Robin uses the circle method and gives every team one bye when the field is odd. These formats are suitable for club and scholastic events. High-stakes FIDE-rated events should still be verified by a licensed arbiter against current federation rules.
 
-## Privacy
+## Privacy and security
 
-All tournament information stays in the browser unless the organizer explicitly exports a file. No analytics or network API is used.
+All tournament information stays in the browser unless the organizer explicitly exports a file. No analytics or network API is used. See [SECURITY.md](SECURITY.md) for the threat model, local-data limitations, security practices, required environment configuration, and private reporting guidance.

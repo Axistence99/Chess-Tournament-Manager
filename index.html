@@ -4,6 +4,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
@@ -22,33 +27,7 @@
       name="description"
       content="Offline-first professional chess tournament pairing manager"
     />
-    <script>
-      (() => {
-        const savedTheme = localStorage.getItem("castling.theme.v1");
-        const themes = ["dark", "light", "criterion", "ggcc", "ceit"];
-        const theme = themes.includes(savedTheme) ? savedTheme : "criterion";
-        document.documentElement.dataset.theme = theme;
-        document
-          .querySelector('meta[name="theme-color"]')
-          .setAttribute(
-            "content",
-            theme === "light"
-              ? "#f3f6f4"
-              : theme === "criterion"
-                ? "#1c503a"
-                : theme === "ggcc"
-                  ? "#080b10"
-                  : theme === "ceit"
-                    ? "#090604"
-                    : "#0b1210",
-          );
-        if (theme === "ggcc") {
-          document.querySelector('link[rel="icon"]').href = "./ggcc-logo.png";
-          document.querySelector('link[rel="apple-touch-icon"]').href =
-            "./ggcc-logo.png";
-        }
-      })();
-    </script>
+    <script type="module" src="/theme-bootstrap.js"></script>
     <title>Chest-Tournament Manager</title>
   </head>
   <body>
